@@ -1,318 +1,802 @@
-PaperAgent
-<p align="center"> <b>An Intelligent Multi-Agent System for Academic Paper Understanding and Research Assistance</b> </p>
-📖 Overview
+# 🚀 AgentHub
 
-PaperAgent is an intelligent academic research assistant built on top of LangGraph + LangChain + Large Language Models (LLMs).
+<p align="center">
+<b>Enterprise Multi-Agent Intelligence Platform</b>
+</p>
 
-The system aims to solve the limitations of traditional LLM-based paper analysis systems, including:
+<p align="center">
+基于 LangGraph 的企业级多智能体智能应用平台
+</p>
 
-Hallucinated academic knowledge
-Lack of citation verification
-Difficulty in understanding long-context papers
-Weak reasoning ability over complex research content
 
-By integrating Retrieval-Augmented Generation (RAG), Multi-Agent Collaboration, and Tool Calling, PaperAgent builds an end-to-end research workflow from:
+<p align="center">
 
-Paper retrieval → Knowledge extraction → Understanding → Reasoning → Verification → Research assistance
+LangGraph · LangChain · RAG · Tool Calling · LLM Agent
 
-Unlike traditional chat-based LLM applications, PaperAgent introduces specialized agents responsible for different research tasks, enabling reliable and interpretable academic analysis.
+</p>
 
-✨ Features
-1. Multi-Agent Research Workflow
 
-PaperAgent adopts a LangGraph-based Agent orchestration architecture.
+---
 
-A supervisor agent dynamically decomposes user queries and routes tasks to specialized agents.
+# 🇨🇳 中文介绍 | Chinese Introduction
 
-Architecture:
 
-                    User Query
-                        |
-                        |
-                Supervisor Agent
-                        |
-        --------------------------------
-        |              |               |
- Paper Retrieval   Paper Reader   Verification
-    Agent             Agent          Agent
-        |              |               |
-        --------------------------------
-                        |
-                Final Research Answer
-Supported Agents
-Agent	Function
-Paper Retrieval Agent	Retrieve related papers and knowledge
-Paper Understanding Agent	Analyze paper structure and methodology
-Citation Verification Agent	Verify factual consistency
-Experiment Analysis Agent	Understand experiments and results
-Research Assistant Agent	Generate summaries and insights
-2. Retrieval-Augmented Generation (RAG)
+## 📖 项目简介
 
-To reduce LLM hallucination in academic scenarios, PaperAgent integrates a complete RAG pipeline.
 
-Workflow:
+**AgentHub** 是一个基于大语言模型（LLM）的企业级多智能体应用平台。
 
-PDF Paper
+项目基于 **LangGraph + LangChain** 构建统一 Agent Runtime，通过多智能体协同、知识增强检索（RAG）、工具调用（Tool Calling）以及记忆管理（Memory）等技术，实现面向企业和个人用户的智能应用开发平台。
 
-↓
 
-Document Parser
+AgentHub 提供两种核心工作模式：
 
-↓
 
-Chunk Segmentation
+Chat Mode
+开放领域智能助手
 
-↓
+Work Mode
+企业内部智能工作空间
 
-Embedding Model
 
-↓
 
-Vector Database
+其中：
 
-↓
+- Chat Mode 面向外部通用智能交互
+- Work Mode 面向企业内部知识管理和业务自动化
 
-Retriever
 
-↓
+目标是构建一个可扩展、可部署、可定制的企业级 AI Agent 基础设施。
 
-LLM Reasoning
-Knowledge Processing
-Document Parsing
 
-Supports:
+---
 
-PDF papers
-Markdown documents
-Technical reports
+# ✨ 核心功能
 
-Technology:
 
-PyPDF
-LangChain Document Loader
-Semantic Chunking
+## 1. 双模式智能 Agent 系统
 
-Long papers are split into meaningful chunks:
 
-Paper
+## 💬 Chat Mode
 
-|
-|-- Abstract
-|
-|-- Introduction
-|
-|-- Method
-|
-|-- Experiment
-|
-|-- Conclusion
 
-Technology:
+面向开放领域的通用 AI 助手。
 
-LangChain Text Splitter
-Embedding Representation
 
-Paper chunks are transformed into semantic vectors using:
+支持：
 
-BGE-M3 Embedding Model
+- 通用知识问答
+- 代码生成
+- 学术研究辅助
+- 外部知识检索
+- 多轮智能对话
 
-Advantages:
 
-Multilingual support
-Long-context representation
-Academic semantic retrieval
-Vector Database
+架构：
 
-Paper knowledge is stored using:
 
-ChromaDB
-
-Stored information:
-
-{
- text_chunk,
- embedding_vector,
- paper_metadata,
- citation_information
-}
-3. Academic Knowledge Grounding
-
-Traditional LLM:
-
-Question
+User
 
 ↓
 
-LLM Memory
+Chat Supervisor Agent
+
+↓
+
+Specialized Agents
+
+↓
+
+LLM + Tools
+
+↓
+
+Final Response
+
+
+
+
+---
+
+## 🏢 Work Mode
+
+
+面向企业内部场景的智能工作空间。
+
+
+支持：
+
+- 企业知识库问答
+- 员工手册查询
+- 企业文档分析
+- HR智能助手
+- OA流程助手
+
+
+架构：
+
+
+Employee
+
+↓
+
+Work Supervisor Agent
+
+↓
+
+Enterprise Agents
+
+↓
+
+Enterprise Knowledge Base
 
 ↓
 
 Answer
 
-Problem:
 
-Outdated knowledge
-Hallucinated references
-Incorrect claims
 
-PaperAgent:
+---
 
-Question
+# 2. Multi-Agent 智能体协同
+
+
+AgentHub 基于 **LangGraph** 构建多智能体工作流。
+
+
+通过 Supervisor Agent 实现：
+
+- 用户意图识别
+- 任务拆解
+- Agent选择
+- 工作流调度
+- 结果整合
+
+
+示例：
+
+
+
+User Request
+
+  |
+
+Supervisor Agent
+
+  |
+
+| | |
+
+Search Code Research
+
+Agent Agent Agent
+
+  |
+
+Final Answer
+
+
+
+---
+
+# 3. RAG 知识增强系统
+
+
+为了降低大语言模型幻觉问题，AgentHub 集成完整 RAG Pipeline。
+
+
+流程：
+
+
+Documents
+
+|
+
+Document Parser
+
+|
+
+Chunk Splitter
+
+|
+
+Embedding Model
+
+|
+
+Vector Database
+
+|
+
+Retriever
+
+|
+
+LLM Generation
+
+
+
+支持：
+
+- PDF文档解析
+- 企业知识库构建
+- 语义检索
+- 基于知识证据的回答生成
+
+
+技术：
+
+- BGE-M3 Embedding
+- ChromaDB
+- LangChain Retriever
+
+
+---
+
+# 4. Agent Tool Calling
+
+
+AgentHub 支持智能体主动调用外部工具。
+
+
+工作流程：
+
+
+User
 
 ↓
 
-Retrieve Relevant Paper Evidence
+LLM Reasoning
 
 ↓
 
-Reasoning
+Tool Selection
 
 ↓
 
-Evidence-based Answer
+Tool Execution
 
-The generated response is grounded on retrieved academic sources.
+↓
 
-4. Tool Calling Framework
+Observation
 
-PaperAgent enables agents to actively invoke external tools.
+↓
+
+Final Answer
+
+
+
+支持扩展：
+
+- 搜索工具
+- 数据库查询
+- 文档检索
+- 企业业务接口
+- 自动化工作流
+
+
+---
+
+# 5. Memory 系统
+
+
+AgentHub 支持多层级智能体记忆。
+
+
+## Short-term Memory
+
+短期上下文：
+
+- 当前对话
+- 当前任务状态
+
+
+技术：
+
+- LangGraph Checkpoint
+
+
+---
+
+## Long-term Memory
+
+长期用户记忆：
+
+- 用户偏好
+- 历史任务
+- 企业知识
+
+
+用于提升长期交互体验。
+
+
+---
+
+# 🏗 系统架构
+
+
+                     AgentHub
+
+
+                        |
+
+             LangGraph Agent Runtime
+
+
+                        |
+
+      -----------------------------------
+
+      |                                 |
+
+  Chat Mode                        Work Mode
+
+
+      |                                 |
+
+Chat Supervisor Work Supervisor
+
+      |                                 |
+
+| | | | | |
+
+QA Code Research OA HR Document
+
+Agent Agent Agent Agent Agent Agent
+
+      |
+
+      |
+
+ Tool System + RAG + Memory
+
+
+      |
+
+      |
+
+    LLM Gateway
+
+DeepSeek / GPT / Qwen / Ollama
+
+
+
+
+---
+
+# 🛠 技术栈
+
+
+## Agent Framework
+
+- LangGraph
+- LangChain
+- Multi-Agent Architecture
+
+
+## Large Language Model
+
+- DeepSeek API
+- OpenAI API
+- Qwen
+- Ollama
+
+
+## Retrieval-Augmented Generation
+
+- RAG
+- BGE-M3 Embedding
+- ChromaDB
+- Vector Retrieval
+
+
+## Backend
+
+- FastAPI
+- Uvicorn
+- AsyncIO
+- Pydantic
+
+
+## Frontend
+
+- Next.js
+- React
+- TypeScript
+- Ant Design
+- Tailwind CSS
+
+
+## Database
+
+- SQLite
+- SQLAlchemy
+
+
+---
+
+# 🚀 快速开始
+
+
+## Backend
+
+
+进入后端目录：
+
+
+```bash
+cd backend
+
+安装依赖：
+
+uv sync
+
+启动环境：
+
+source .venv/bin/activate
+
+启动服务：
+
+cd app
+
+python run_server.py
+
+默认：
+
+http://localhost:8000
+Frontend
+
+进入前端目录：
+
+cd frontend
+
+安装依赖：
+
+pnpm install
+
+启动：
+
+pnpm dev
+
+默认：
+
+http://localhost:3000
+🗺 Roadmap
+Phase 1
+
+✅ LangGraph Agent Runtime
+
+✅ Multi-Agent Workflow
+
+✅ LLM Integration
+
+Phase 2
+
+🚧 Chat Mode Enhancement
+
+Search Agent
+Code Agent
+Research Agent
+Phase 3
+
+🚧 Work Mode
+
+Enterprise Knowledge Base
+OA Agent
+HR Agent
+Document Agent
+Phase 4
+
+🚧 Enterprise Platform
+
+Agent Marketplace
+Permission System
+Workflow Automation
+Agent Evaluation
+🌟 项目愿景
+
+AgentHub 希望成为企业级 AI Agent 基础设施平台。
+
+通过连接：
+
+LLM
+
++
+
+Knowledge
+
++
+
+Tools
+
++
+
+Workflow
+
++
+
+Memory
+
+
+帮助企业快速构建可靠、可扩展的智能应用。
+
+<br> <br>
+🇺🇸 English Introduction
+🚀 AgentHub
+Enterprise Multi-Agent Intelligence Platform
+
+AgentHub is an enterprise-oriented AI Agent platform built with LangGraph and LangChain.
+
+It provides a unified runtime for developing intelligent applications by integrating:
+
+Large Language Models
+Multi-Agent Collaboration
+Retrieval-Augmented Generation
+Tool Calling
+Memory Management
+
+AgentHub supports two major operation modes:
+
+Chat Mode
+
+Open-domain AI Assistant
+
+
+Work Mode
+
+Enterprise AI Workspace
+
+✨ Features
+1. Dual Agent Modes
+Chat Mode
+
+A general-purpose AI assistant for open-domain tasks.
+
+Capabilities:
+
+Knowledge Q&A
+Code generation
+Research assistance
+External knowledge retrieval
+Multi-turn conversations
+
+Architecture:
+
+User
+
+ ↓
+
+Chat Supervisor Agent
+
+ ↓
+
+Specialized Agents
+
+ ↓
+
+LLM + Tools
+
+ ↓
+
+Response
+
+Work Mode
+
+An enterprise AI workspace designed for internal business scenarios.
+
+Capabilities:
+
+Employee handbook QA
+Enterprise document understanding
+HR assistant
+OA workflow assistant
+Internal knowledge management
+
+Architecture:
+
+Employee
+
+ ↓
+
+Work Supervisor Agent
+
+ ↓
+
+Enterprise Agents
+
+ ↓
+
+Enterprise Knowledge Base
+
+ ↓
+
+Answer
+
+2. Multi-Agent Collaboration
+
+AgentHub uses LangGraph to orchestrate multiple specialized agents.
+
+Supervisor Agent handles:
+
+Intent understanding
+Task decomposition
+Agent routing
+Workflow execution
+Result aggregation
 
 Example:
 
-User:
+User Request
 
-Find papers about diffusion model editing
+      |
 
-Agent reasoning:
+Supervisor Agent
 
-Need external knowledge
+      |
 
-↓
+----------------------
 
-Call Paper Search Tool
+Search Agent
 
-↓
+Code Agent
 
-Retrieve papers
+Research Agent
 
-↓
+      |
 
-Analyze results
+Final Response
 
-↓
+3. Retrieval-Augmented Generation
 
-Generate response
+AgentHub integrates a complete RAG pipeline to reduce LLM hallucination.
 
-Tool examples:
+Pipeline:
 
-Paper Search Tool
-Vector Retrieval Tool
-Citation Checker
-Metadata Query Tool
-5. Long Paper Understanding
+Documents
 
-Large academic papers contain:
+ ↓
 
-Complex mathematical formulations
-Multiple experiments
-Extensive references
+Parsing
 
-PaperAgent uses:
+ ↓
 
-Hierarchical retrieval
-Chunk-level reasoning
-Multi-step analysis
+Chunking
 
-to support:
+ ↓
 
-Paper summary
-Method explanation
-Innovation analysis
-Experiment comparison
-Reviewer-style critique
-6. Streaming Interaction
+Embedding
 
-Backend provides real-time response through:
+ ↓
 
-FastAPI + Server Sent Events (SSE)
+Vector Database
+
+ ↓
+
+Retrieval
+
+ ↓
+
+LLM Generation
+
+
+Technologies:
+
+BGE-M3 Embedding
+ChromaDB
+LangChain Retriever
+4. Agent Tool Calling
+
+Agents can dynamically invoke external tools.
 
 Workflow:
 
-Agent generates token
+User
 
-↓
+ ↓
 
-SSE Stream
+LLM Reasoning
 
-↓
+ ↓
 
-Frontend receives token
+Tool Selection
 
-↓
+ ↓
 
-Real-time display
+Tool Execution
 
-Similar to ChatGPT streaming experience.
+ ↓
 
-🏗 System Architecture
-                 Frontend
-              Next.js + React
-                    |
-                    |
-              FastAPI Backend
-                    |
-                    |
-             LangGraph Workflow
-                    |
-        ----------------------------
-        |                          |
- Supervisor Agent              Memory
+Observation
+
+ ↓
+
+Final Answer
+
+
+Supported tools:
+
+Search
+Database Query
+Document Retrieval
+Enterprise APIs
+Workflow Automation
+5. Memory System
+
+AgentHub supports intelligent memory management.
+
+Short-term Memory
+
+Maintains:
+
+Conversation context
+Task states
+
+Powered by:
+
+LangGraph Checkpoint
+Long-term Memory
+
+Stores:
+
+User preferences
+Historical interactions
+Enterprise knowledge
+🏗 Architecture
+                        AgentHub
+
+                           |
+
+              LangGraph Agent Runtime
+
+                           |
+
+        ---------------------------------
+
+        |                               |
+
+    Chat Mode                      Work Mode
+
+
+        |                               |
+
+Chat Supervisor              Work Supervisor
+
+
+        |                               |
+
+ Specialized Agents        Enterprise Agents
+
+
         |
- ------------------------------
- |             |               |
-Retriever   Analyzer     Validator
- Agent       Agent        Agent
+
+ Tool System + RAG + Memory
+
 
         |
-        |
-   LangChain Framework
 
-        |
- -------------------
- |                 |
-DeepSeek        Tools
-LLM             Calling
+ LLM Gateway
 
-        |
-        |
- RAG Knowledge Base
-
-        |
- -------------------
- |                 |
-BGE-M3          ChromaDB
-Embedding       Vector Store
+DeepSeek / GPT / Qwen / Ollama
 
 🛠 Technology Stack
-LLM & Agent Framework
+Agent Framework
 LangGraph
 LangChain
 Multi-Agent Architecture
-Agent Tool Calling
-Large Language Models
-DeepSeek API
-OpenAI Compatible API
-Ollama Local Models
-Retrieval-Augmented Generation
+LLM
+DeepSeek
+OpenAI
+Qwen
+Ollama
 RAG
-BGE-M3 Embedding
+BGE-M3
 ChromaDB
-Semantic Retrieval
+Vector Retrieval
 Backend
 FastAPI
 Uvicorn
-Pydantic
 AsyncIO
+Pydantic
 Frontend
 Next.js
 React
@@ -322,174 +806,72 @@ Tailwind CSS
 Database
 SQLite
 SQLAlchemy
-LangGraph Checkpoint
 🚀 Quick Start
-1. Clone Repository
-git clone https://github.com/xxx/PaperAgent.git
-
-cd PaperAgent
-Backend Setup
-
-Create environment:
-
+Backend
 cd backend
 
 uv sync
 
-Activate:
-
 source .venv/bin/activate
-
-Configure:
-
-.env
-
-Example:
-
-DEEPSEEK_API_KEY=your_key
-
-DEFAULT_MODEL=deepseek-chat
-
-EMBEDDING_MODEL=bge-m3
-
-CHROMA_PATH=resource/chroma_db
-
-Run:
 
 cd app
 
 python run_server.py
-
-Backend:
-
-http://localhost:8000
-Frontend Setup
-
-Install:
-
+Frontend
 cd frontend
 
 pnpm install
 
-Run:
-
 pnpm dev
+🗺 Roadmap
+Phase 1
+LangGraph Runtime
+Multi-Agent Workflow
+LLM Integration
+Phase 2
 
-Frontend:
+Chat Mode:
 
-http://localhost:3000
-📚 Example Usage
-Paper Understanding
+Search Agent
+Code Agent
+Research Agent
+Phase 3
 
-Input:
+Work Mode:
 
-Explain the core innovation of this paper.
+Enterprise Knowledge Base
+OA Agent
+HR Agent
+Document Agent
+Phase 4
 
-Output:
+Enterprise Platform:
 
-1. Problem Definition
+Agent Marketplace
+Permission Management
+Workflow Automation
+Agent Evaluation
+🌟 Vision
 
-2. Method Overview
+AgentHub aims to become an enterprise AI Agent infrastructure platform by connecting:
 
-3. Technical Innovation
+LLM
 
-4. Experimental Results
++
 
-5. Limitations
-Paper Comparison
+Knowledge
 
-Input:
++
 
-Compare this paper with RAG.
+Tools
 
-Agent:
++
 
-Retrieval Agent
-        +
-Analysis Agent
-        +
-Reasoning Agent
+Workflow
 
-Generate:
++
 
-Method difference
-Advantage
-Limitation
-Future direction
-🔬 Future Improvements
-1. Research Memory
+Memory
 
-Introduce long-term research memory:
 
-User Research Interest
-
-↓
-
-Knowledge Graph
-
-↓
-
-Personal Research Assistant
-2. Citation Graph Reasoning
-
-Build:
-
-Paper
-
-↓
-
-Citation Network
-
-↓
-
-Research Evolution Analysis
-3. Autonomous Research Agent
-
-Future:
-
-Research Goal
-
-↓
-
-Paper Search
-
-↓
-
-Literature Review
-
-↓
-
-Experiment Design
-
-↓
-
-Research Report Generation
-🏆 Project Highlights
-Built a complete LLM Agent engineering system
-Implemented LangGraph multi-agent orchestration
-Designed RAG-based academic knowledge enhancement
-Integrated tool calling and external knowledge retrieval
-Developed FastAPI + SSE real-time interaction framework
-Reduced LLM hallucination through evidence-grounded generation
-📌 Project Status
-
-🚧 Under active development
-
-Current Version:
-
-v0.1
-
-Implemented:
-
-✅ Agent Framework
-✅ RAG Pipeline
-✅ Vector Retrieval
-✅ LLM Integration
-✅ Streaming Chat Interface
-
-Developing:
-
-🚧 Paper Retrieval Agent
-🚧 Citation Verification Agent
-🚧 Academic Knowledge Graph
-🚧 Automated Literature Review
+to build reliable and scalable intelligent applications.
