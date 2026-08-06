@@ -8,7 +8,6 @@
 基于 LangGraph 的企业级多智能体智能应用平台
 </p>
 
-
 <p align="center">
 
 LangGraph · LangChain · RAG · Tool Calling · LLM Agent
@@ -18,35 +17,37 @@ LangGraph · LangChain · RAG · Tool Calling · LLM Agent
 
 ---
 
-# 🇨🇳 中文介绍 | Chinese Introduction
+# 中文介绍
 
 
-## 📖 项目简介
+# 📖 项目简介
 
 
-**AgentHub** 是一个基于大语言模型（LLM）的企业级多智能体应用平台。
+**AgentHub** 是一个基于大语言模型（Large Language Model, LLM）的企业级多智能体智能应用平台。
 
-项目基于 **LangGraph + LangChain** 构建统一 Agent Runtime，通过多智能体协同、知识增强检索（RAG）、工具调用（Tool Calling）以及记忆管理（Memory）等技术，实现面向企业和个人用户的智能应用开发平台。
-
-
-AgentHub 提供两种核心工作模式：
+项目基于 **LangGraph + LangChain** 构建统一 Agent Runtime，通过多智能体协同（Multi-Agent Collaboration）、知识增强检索（Retrieval-Augmented Generation, RAG）、工具调用（Tool Calling）以及记忆管理（Memory System）等核心技术，实现面向企业和个人用户的智能应用开发平台。
 
 
+AgentHub 提供两种核心运行模式：
+
+```
 Chat Mode
 开放领域智能助手
 
 Work Mode
 企业内部智能工作空间
-
+```
 
 
 其中：
 
-- Chat Mode 面向外部通用智能交互
-- Work Mode 面向企业内部知识管理和业务自动化
+- **Chat Mode** 面向开放领域智能交互，提供类似 ChatGPT 的通用智能助手能力。
+- **Work Mode** 面向企业内部业务场景，结合企业知识库和业务工具，实现企业级智能办公。
 
 
-目标是构建一个可扩展、可部署、可定制的企业级 AI Agent 基础设施。
+AgentHub 致力于构建一个：
+
+> 可扩展、可部署、可定制的企业级 AI Agent 基础设施平台。
 
 
 ---
@@ -54,16 +55,16 @@ Work Mode
 # ✨ 核心功能
 
 
-## 1. 双模式智能 Agent 系统
+# 1. 双模式智能 Agent 系统
 
 
 ## 💬 Chat Mode
 
 
-面向开放领域的通用 AI 助手。
+Chat Mode 是面向外部用户的通用智能助手模式。
 
 
-支持：
+主要能力：
 
 - 通用知识问答
 - 代码生成
@@ -72,68 +73,84 @@ Work Mode
 - 多轮智能对话
 
 
-架构：
+系统架构：
 
-
+```
 User
 
-↓
+ ↓
 
 Chat Supervisor Agent
 
-↓
+ ↓
 
 Specialized Agents
 
-↓
+ ↓
 
 LLM + Tools
 
-↓
+ ↓
 
 Final Response
+```
 
 
+支持扩展 Agent：
+
+- QA Agent
+- Code Agent
+- Research Agent
+- Search Agent
 
 
 ---
 
-## 🏢 Work Mode
+# 🏢 Work Mode
 
 
-面向企业内部场景的智能工作空间。
+Work Mode 是面向企业内部员工的智能工作空间。
 
 
-支持：
+主要能力：
 
 - 企业知识库问答
 - 员工手册查询
 - 企业文档分析
-- HR智能助手
-- OA流程助手
+- HR 智能助手
+- OA 流程助手
+- 企业业务自动化
 
 
-架构：
+系统架构：
 
-
+```
 Employee
 
-↓
+ ↓
 
 Work Supervisor Agent
 
-↓
+ ↓
 
 Enterprise Agents
 
-↓
+ ↓
 
 Enterprise Knowledge Base
 
-↓
+ ↓
 
 Answer
+```
 
+
+支持扩展 Agent：
+
+- OA Agent
+- HR Agent
+- Document Agent
+- Workflow Agent
 
 
 ---
@@ -146,35 +163,37 @@ AgentHub 基于 **LangGraph** 构建多智能体工作流。
 
 通过 Supervisor Agent 实现：
 
-- 用户意图识别
-- 任务拆解
-- Agent选择
+- 用户意图理解
+- 复杂任务拆解
+- Agent 动态选择
 - 工作流调度
-- 结果整合
+- 多 Agent 结果融合
 
 
 示例：
 
-
-
+```
 User Request
 
-  |
+      |
 
 Supervisor Agent
 
-  |
+      |
 
-| | |
+----------------------
 
-Search Code Research
+|          |           |
 
-Agent Agent Agent
+Search   Code     Research
 
-  |
+Agent    Agent      Agent
+
+      |
 
 Final Answer
 
+```
 
 
 ---
@@ -182,49 +201,50 @@ Final Answer
 # 3. RAG 知识增强系统
 
 
-为了降低大语言模型幻觉问题，AgentHub 集成完整 RAG Pipeline。
+为了降低大语言模型幻觉问题，AgentHub 集成完整的 Retrieval-Augmented Generation Pipeline。
 
 
-流程：
+整体流程：
 
-
+```
 Documents
 
-|
+    |
 
 Document Parser
 
-|
+    |
 
 Chunk Splitter
 
-|
+    |
 
 Embedding Model
 
-|
+    |
 
 Vector Database
 
-|
+    |
 
 Retriever
 
-|
+    |
 
 LLM Generation
 
+```
 
 
 支持：
 
-- PDF文档解析
+- PDF 文档解析
 - 企业知识库构建
-- 语义检索
+- 文档语义检索
 - 基于知识证据的回答生成
 
 
-技术：
+核心技术：
 
 - BGE-M3 Embedding
 - ChromaDB
@@ -236,37 +256,37 @@ LLM Generation
 # 4. Agent Tool Calling
 
 
-AgentHub 支持智能体主动调用外部工具。
+AgentHub 支持智能体主动调用外部工具完成复杂任务。
 
 
 工作流程：
 
-
+```
 User
 
-↓
+ ↓
 
 LLM Reasoning
 
-↓
+ ↓
 
 Tool Selection
 
-↓
+ ↓
 
 Tool Execution
 
-↓
+ ↓
 
 Observation
 
-↓
+ ↓
 
 Final Answer
+```
 
 
-
-支持扩展：
+支持工具：
 
 - 搜索工具
 - 数据库查询
@@ -285,9 +305,10 @@ AgentHub 支持多层级智能体记忆。
 
 ## Short-term Memory
 
-短期上下文：
 
-- 当前对话
+用于保存：
+
+- 当前对话上下文
 - 当前任务状态
 
 
@@ -300,14 +321,15 @@ AgentHub 支持多层级智能体记忆。
 
 ## Long-term Memory
 
-长期用户记忆：
+
+用于保存：
 
 - 用户偏好
 - 历史任务
 - 企业知识
 
 
-用于提升长期交互体验。
+提升长期智能交互能力。
 
 
 ---
@@ -315,51 +337,57 @@ AgentHub 支持多层级智能体记忆。
 # 🏗 系统架构
 
 
-                     AgentHub
+```
+                         AgentHub
 
 
-                        |
+                            |
 
-             LangGraph Agent Runtime
-
-
-                        |
-
-      -----------------------------------
-
-      |                                 |
-
-  Chat Mode                        Work Mode
+                 LangGraph Agent Runtime
 
 
-      |                                 |
+                            |
 
-Chat Supervisor Work Supervisor
+          -----------------------------------
 
-      |                                 |
+          |                                 |
 
-| | | | | |
-
-QA Code Research OA HR Document
-
-Agent Agent Agent Agent Agent Agent
-
-      |
-
-      |
-
- Tool System + RAG + Memory
+      Chat Mode                        Work Mode
 
 
-      |
+          |                                 |
 
-      |
-
-    LLM Gateway
-
-DeepSeek / GPT / Qwen / Ollama
+  Chat Supervisor              Work Supervisor
 
 
+          |                                 |
+
+ ----------------          ---------------------
+
+ |       |       |          |        |         |
+
+QA    Code   Research      OA      HR     Document
+
+Agent Agent    Agent      Agent  Agent    Agent
+
+
+          |
+
+          |
+
+     Tool System + RAG + Memory
+
+
+          |
+
+          |
+
+        LLM Gateway
+
+
+ DeepSeek / GPT / Qwen / Ollama
+
+```
 
 
 ---
@@ -372,6 +400,7 @@ DeepSeek / GPT / Qwen / Ollama
 - LangGraph
 - LangChain
 - Multi-Agent Architecture
+- Supervisor Agent
 
 
 ## Large Language Model
@@ -423,82 +452,139 @@ DeepSeek / GPT / Qwen / Ollama
 
 进入后端目录：
 
-
 ```bash
 cd backend
+```
+
 
 安装依赖：
 
+```bash
 uv sync
+```
 
-启动环境：
 
+启动虚拟环境：
+
+```bash
 source .venv/bin/activate
+```
+
 
 启动服务：
 
+```bash
 cd app
 
 python run_server.py
+```
+
 
 默认：
 
+```
 http://localhost:8000
-Frontend
+```
+
+
+---
+
+# Frontend
+
 
 进入前端目录：
 
+```bash
 cd frontend
+```
+
 
 安装依赖：
 
+```bash
 pnpm install
+```
+
 
 启动：
 
+```bash
 pnpm dev
+```
+
 
 默认：
 
+```
 http://localhost:3000
-🗺 Roadmap
-Phase 1
+```
 
-✅ LangGraph Agent Runtime
 
-✅ Multi-Agent Workflow
+---
 
-✅ LLM Integration
+# 🗺 Roadmap
 
-Phase 2
 
-🚧 Chat Mode Enhancement
+## Phase 1：Agent Runtime
 
-Search Agent
-Code Agent
-Research Agent
-Phase 3
+完成：
 
-🚧 Work Mode
+- LangGraph Agent Runtime
+- Multi-Agent Workflow
+- LLM Integration
 
-Enterprise Knowledge Base
-OA Agent
-HR Agent
-Document Agent
-Phase 4
 
-🚧 Enterprise Platform
+---
 
-Agent Marketplace
-Permission System
-Workflow Automation
-Agent Evaluation
-🌟 项目愿景
+## Phase 2：Chat Mode
+
+
+计划：
+
+- Search Agent
+- Code Agent
+- Research Agent
+- External Knowledge Retrieval
+
+
+---
+
+## Phase 3：Work Mode
+
+
+计划：
+
+- Enterprise Knowledge Base
+- OA Agent
+- HR Agent
+- Document Agent
+- Workflow Automation
+
+
+---
+
+## Phase 4：Enterprise Platform
+
+
+计划：
+
+- Agent Marketplace
+- Permission Management
+- Workflow Builder
+- Agent Evaluation System
+
+
+---
+
+# 🌟 项目愿景
+
 
 AgentHub 希望成为企业级 AI Agent 基础设施平台。
 
+
 通过连接：
 
+```
 LLM
 
 +
@@ -517,26 +603,49 @@ Workflow
 
 Memory
 
+```
 
-帮助企业快速构建可靠、可扩展的智能应用。
 
-<br> <br>
-🇺🇸 English Introduction
-🚀 AgentHub
-Enterprise Multi-Agent Intelligence Platform
+帮助企业快速构建：
 
-AgentHub is an enterprise-oriented AI Agent platform built with LangGraph and LangChain.
+- 可靠的智能助手
+- 自动化业务流程
+- 企业知识管理系统
+- 个性化 AI 应用
 
-It provides a unified runtime for developing intelligent applications by integrating:
 
-Large Language Models
-Multi-Agent Collaboration
-Retrieval-Augmented Generation
-Tool Calling
-Memory Management
+---
+
+<br>
+
+<br>
+
+
+#  English Introduction
+
+
+# 🚀 AgentHub
+
+## Enterprise Multi-Agent Intelligence Platform
+
+
+AgentHub is an enterprise-oriented AI Agent platform built with **LangGraph and LangChain**.
+
+
+It provides a unified runtime for building intelligent applications by integrating:
+
+
+- Large Language Models
+- Multi-Agent Collaboration
+- Retrieval-Augmented Generation
+- Tool Calling
+- Memory Management
+
 
 AgentHub supports two major operation modes:
 
+
+```
 Chat Mode
 
 Open-domain AI Assistant
@@ -545,23 +654,36 @@ Open-domain AI Assistant
 Work Mode
 
 Enterprise AI Workspace
+```
 
-✨ Features
-1. Dual Agent Modes
-Chat Mode
+
+---
+
+# ✨ Features
+
+
+# 1. Dual Agent Modes
+
+
+## Chat Mode
+
 
 A general-purpose AI assistant for open-domain tasks.
 
+
 Capabilities:
 
-Knowledge Q&A
-Code generation
-Research assistance
-External knowledge retrieval
-Multi-turn conversations
+- Knowledge Q&A
+- Code generation
+- Research assistance
+- External knowledge retrieval
+- Multi-turn conversation
+
 
 Architecture:
 
+
+```
 User
 
  ↓
@@ -579,21 +701,30 @@ LLM + Tools
  ↓
 
 Response
+```
 
-Work Mode
+
+---
+
+## Work Mode
+
 
 An enterprise AI workspace designed for internal business scenarios.
 
+
 Capabilities:
 
-Employee handbook QA
-Enterprise document understanding
-HR assistant
-OA workflow assistant
-Internal knowledge management
+- Employee handbook QA
+- Enterprise document understanding
+- HR assistant
+- OA workflow assistant
+- Internal knowledge management
+
 
 Architecture:
 
+
+```
 Employee
 
  ↓
@@ -611,47 +742,39 @@ Enterprise Knowledge Base
  ↓
 
 Answer
+```
 
-2. Multi-Agent Collaboration
+
+---
+
+# 2. Multi-Agent Collaboration
+
 
 AgentHub uses LangGraph to orchestrate multiple specialized agents.
 
+
 Supervisor Agent handles:
 
-Intent understanding
-Task decomposition
-Agent routing
-Workflow execution
-Result aggregation
 
-Example:
+- Intent understanding
+- Task decomposition
+- Agent routing
+- Workflow execution
+- Result aggregation
 
-User Request
 
-      |
+---
 
-Supervisor Agent
+# 3. Retrieval-Augmented Generation
 
-      |
 
-----------------------
+AgentHub integrates RAG pipeline to reduce LLM hallucination.
 
-Search Agent
-
-Code Agent
-
-Research Agent
-
-      |
-
-Final Response
-
-3. Retrieval-Augmented Generation
-
-AgentHub integrates a complete RAG pipeline to reduce LLM hallucination.
 
 Pipeline:
 
+
+```
 Documents
 
  ↓
@@ -677,19 +800,28 @@ Retrieval
  ↓
 
 LLM Generation
+```
 
 
 Technologies:
 
-BGE-M3 Embedding
-ChromaDB
-LangChain Retriever
-4. Agent Tool Calling
+- BGE-M3 Embedding
+- ChromaDB
+- LangChain Retriever
+
+
+---
+
+# 4. Agent Tool Calling
+
 
 Agents can dynamically invoke external tools.
 
+
 Workflow:
 
+
+```
 User
 
  ↓
@@ -711,42 +843,63 @@ Observation
  ↓
 
 Final Answer
+```
 
 
 Supported tools:
 
-Search
-Database Query
-Document Retrieval
-Enterprise APIs
-Workflow Automation
-5. Memory System
+- Search
+- Database Query
+- Document Retrieval
+- Enterprise APIs
+- Workflow Automation
+
+
+---
+
+# 5. Memory System
+
 
 AgentHub supports intelligent memory management.
 
-Short-term Memory
+
+## Short-term Memory
 
 Maintains:
 
-Conversation context
-Task states
+- Conversation context
+- Task states
+
 
 Powered by:
 
-LangGraph Checkpoint
-Long-term Memory
+- LangGraph Checkpoint
+
+
+---
+
+## Long-term Memory
 
 Stores:
 
-User preferences
-Historical interactions
-Enterprise knowledge
-🏗 Architecture
+- User preferences
+- Historical interactions
+- Enterprise knowledge
+
+
+---
+
+# 🏗 Architecture
+
+
+```
                         AgentHub
+
 
                            |
 
               LangGraph Agent Runtime
+
 
                            |
 
@@ -778,36 +931,64 @@ Chat Supervisor              Work Supervisor
 
 DeepSeek / GPT / Qwen / Ollama
 
-🛠 Technology Stack
-Agent Framework
-LangGraph
-LangChain
-Multi-Agent Architecture
-LLM
-DeepSeek
-OpenAI
-Qwen
-Ollama
-RAG
-BGE-M3
-ChromaDB
-Vector Retrieval
-Backend
-FastAPI
-Uvicorn
-AsyncIO
-Pydantic
-Frontend
-Next.js
-React
-TypeScript
-Ant Design
-Tailwind CSS
-Database
-SQLite
-SQLAlchemy
-🚀 Quick Start
-Backend
+```
+
+
+---
+
+# 🛠 Technology Stack
+
+
+## Agent Framework
+
+- LangGraph
+- LangChain
+
+
+## LLM
+
+- DeepSeek
+- OpenAI
+- Qwen
+- Ollama
+
+
+## RAG
+
+- BGE-M3
+- ChromaDB
+- Vector Retrieval
+
+
+## Backend
+
+- FastAPI
+- AsyncIO
+- Pydantic
+
+
+## Frontend
+
+- Next.js
+- React
+- TypeScript
+
+
+## Database
+
+- SQLite
+- SQLAlchemy
+
+
+---
+
+# 🚀 Quick Start
+
+
+## Backend
+
+
+```bash
 cd backend
 
 uv sync
@@ -817,44 +998,71 @@ source .venv/bin/activate
 cd app
 
 python run_server.py
-Frontend
+```
+
+
+## Frontend
+
+
+```bash
 cd frontend
 
 pnpm install
 
 pnpm dev
-🗺 Roadmap
-Phase 1
-LangGraph Runtime
-Multi-Agent Workflow
-LLM Integration
-Phase 2
+```
+
+
+---
+
+# 🗺 Roadmap
+
+
+## Phase 1
+
+- LangGraph Runtime
+- Multi-Agent Workflow
+- LLM Integration
+
+
+## Phase 2
 
 Chat Mode:
 
-Search Agent
-Code Agent
-Research Agent
-Phase 3
+- Search Agent
+- Code Agent
+- Research Agent
+
+
+## Phase 3
 
 Work Mode:
 
-Enterprise Knowledge Base
-OA Agent
-HR Agent
-Document Agent
-Phase 4
+- Enterprise Knowledge Base
+- OA Agent
+- HR Agent
+- Document Agent
+
+
+## Phase 4
 
 Enterprise Platform:
 
-Agent Marketplace
-Permission Management
-Workflow Automation
-Agent Evaluation
-🌟 Vision
+- Agent Marketplace
+- Permission Management
+- Workflow Automation
+- Agent Evaluation
+
+
+---
+
+# 🌟 Vision
+
 
 AgentHub aims to become an enterprise AI Agent infrastructure platform by connecting:
 
+
+```
 LLM
 
 +
@@ -872,6 +1080,8 @@ Workflow
 +
 
 Memory
+
+```
 
 
 to build reliable and scalable intelligent applications.
