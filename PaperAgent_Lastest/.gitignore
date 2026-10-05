@@ -1,0 +1,39 @@
+# Local credentials and frontend environment overrides
+.env
+.env.*
+!.env.example
+*.local
+
+# Installed dependencies, builds and caches
+.venv/
+node_modules/
+dist/
+dist-ssr/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+*.tsbuildinfo
+
+# Runtime data and downloaded models
+res/
+models/
+*.db
+*.sqlite*
+*.onnx
+*.safetensors
+*.gguf
+*.ckpt
+*.pth
+*.pt
+*.bin
+*.log
+
+# Personal papers, submission documents and result exports
+*.pdf
+*.doc
+*.docx
+*.xlsx
+*.pptx
+*.csv
+*.zip
+*.7z
