@@ -1,22 +1,11 @@
-<!-- 这个页面用于没有消息时的展示 -->
 <template>
-  <div class="flex flex-col items-center justify-center w-full h-full">
-    <IconoirProvider
-      :icon-props="{
-        color: '#000000',
-        'stroke-width': 1,
-        width: '5em',
-        height: '5em',
-      }"
-    >
-      <ChatLinesSolid />
-    </IconoirProvider>
-    <span class="mt-7 text-3xl">Hi!Can I help you?</span>
+  <div class="chat-empty flex flex-col items-center justify-center w-full h-full">
+    <div class="chat-empty-mark"><MessagesSquare :size="30" :stroke-width="1.6" /></div>
+    <h2>让每一次探索，都有据可循</h2>
+    <p>添加论文，选定本轮资料范围，再提出你的问题。一起发现方法、比较证据、形成新的研究思路。</p>
+    <span class="chat-empty-hint"><BookOpen :size="14" /> 从下方「添加论文」开始</span>
   </div>
 </template>
-
 <script setup lang="ts">
-import { IconoirProvider, ChatLinesSolid } from '@iconoir/vue'
+import { MessagesSquare, BookOpen } from 'lucide-vue-next'
 </script>
-
-<style lang="less" scoped></style>

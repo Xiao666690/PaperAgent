@@ -16,7 +16,7 @@
     <main ref="messageContainer" class="chat-messages">
       <p v-if="!messages.length" class="text-sm text-gray-500">可以询问方法、实验和结论，也可以选中左侧段落后追问。</p>
       <div v-for="(message, index) in messages" :key="index" class="mb-3">
-        <MessageBox v-bind="message" />
+        <MessageBox v-bind="displayMessage(message)" />
       </div>
     </main>
     <div v-if="selectedText" class="selected-quote">
@@ -24,7 +24,7 @@
       <button type="button" @click="emit('clear-selection')">×</button>
     </div>
     <form class="chat-composer" @submit.prevent="send">
-      <textarea v-model="draft" rows="2" placeholder="询问这篇论文或探索相关研究…" @keydown.enter.exact.prevent="send" />
+      <textarea v-model="draft" rows="2" placeholder="询问这篇论文或探索相关研究…" aria-label="论文问题" @keydown.enter="handleEnter" />
       <button type="submit" :disabled="sending || !draft.trim()">{{ sending ? '回答中…' : '发送' }}</button>
     </form>
   </div>
@@ -37,7 +37,7 @@
 .model-select { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 112px; padding: 6px 9px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; color: #1f2937; font-size: 12px; }
 .model-menu { position: absolute; top: calc(100% + 5px); right: 0; z-index: 30; width: 142px; padding: 4px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; color: #1f2937; box-shadow: 0 8px 24px #1f293726; }
 .model-menu button { display: flex; justify-content: space-between; width: 100%; padding: 7px 8px; border-radius: 5px; text-align: left; font-size: 12px; }
-.model-menu button:hover, .model-menu button[aria-checked='true'] { background: #f1effa; color: #5548ad; }
+.model-menu button:hover, .model-menu button[aria-checked='true'] { background: #eff5fa; color: #487cad; }
 .chat-messages { flex: 1; min-width: 0; min-height: 0; max-width: 100%; overflow-x: hidden; overflow-y: auto; padding: 12px; }
 .chat-messages > div { min-width: 0; max-width: 100%; }
 .selected-quote { display: flex; justify-content: space-between; gap: 6px; min-width: 0; max-width: 100%; padding: 7px 12px; background: #f0f7ff; color: #475569; font-size: 12px; }
@@ -59,6 +59,7 @@ const props = defineProps<{ knowledgeId: string; documentId: string; selectedTex
 const emit = defineEmits<{ 'clear-selection': [] }>()
 type PaperMessage = {
   role: 'user' | 'gpt' | 'system'; content: string; modelLabel?: string;
+  requestContent?: string
   citations?: CitationItem[]; externalPapers?: ExternalPaperResult;
   searchSteps?: string[]; searchState?: SearchProgress['state'];
   status?: 'thinking' | 'streaming' | 'done' | 'error'
@@ -72,8 +73,23 @@ const closeModelMenuOutside = (event: PointerEvent) => {
   if (!modelPicker.value?.contains(event.target as Node)) modelMenuOpen.value = false
 }
 const messages = ref<PaperMessage[]>([])
+const displayMessage = (message: PaperMessage) => {
+  const { requestContent, ...visible } = message
+  return visible
+}
+const normalizeSavedMessage = (item: PaperMessage): PaperMessage => {
+  if (item.role !== 'user' || item.requestContent || typeof item.content !== 'string') return item
+  // Compatibility with previously saved questions containing our exact context suffix.
+  const legacy = item.content.match(/^([\s\S]+?)\n\n请结合当前论文第 \d+ 页选中的文字：\n“[\s\S]*”$/)
+  return legacy ? { ...item, content: legacy[1], requestContent: item.content } : item
+}
 const draft = ref('')
 const sending = ref(false)
+const handleEnter = (event: KeyboardEvent) => {
+  if (event.isComposing || event.keyCode === 229 || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return
+  event.preventDefault()
+  send()
+}
 const messageContainer = ref<HTMLElement | null>(null)
 const storageKey = () => `paperquery:paper-chat:${localStorage.getItem('username') || 'guest'}:${props.documentId}`
 
@@ -84,7 +100,8 @@ const restore = async () => {
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey()) || '[]')
     if (Array.isArray(saved) && saved.length) {
-      messages.value = saved.map((item: PaperMessage) => ({ ...item, status: item.status === 'thinking' || item.status === 'streaming' ? 'error' : item.status }))
+      messages.value = saved.map((item: PaperMessage) => ({ ...normalizeSavedMessage(item), status: item.status === 'thinking' || item.status === 'streaming' ? 'error' : item.status }))
+      persist()
       return
     }
   } catch (error) { console.error('聊天记录读取失败', error) }
@@ -104,8 +121,8 @@ const send = async () => {
   draft.value = ''
   emit('clear-selection')
   const context = messages.value.filter(item => item.role !== 'system' && item.content.trim()).slice(-6)
-    .map(item => `${item.role === 'user' ? '用户' : '助手'}: ${item.content.slice(0, 800)}`).join('\n')
-  messages.value.push({ role: 'user', content: question })
+    .map(item => `${item.role === 'user' ? '用户' : '助手'}: ${(item.requestContent || item.content).slice(0, 800)}`).join('\n')
+  messages.value.push({ role: 'user', content: input, ...(question !== input ? { requestContent: question } : {}) })
   const reply = reactive<PaperMessage>({ role: 'gpt', content: '', modelLabel: modelStore.getModelLabel(selectedModel.value), status: 'thinking', startedAt: Date.now() })
   messages.value.push(reply)
   persist()

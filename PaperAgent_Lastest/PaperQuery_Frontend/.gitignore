@@ -37,3 +37,7 @@ auto-import.d.ts
 .eslintrc-auto-import.json
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# Vditor assets are required at runtime; this is not the application build.
+!public/vendor/vditor/dist/
+!public/vendor/vditor/dist/**

@@ -81,3 +81,4 @@ Write-Host ""
 Write-Host "提示：" -ForegroundColor Yellow
 Write-Host "  · 首次启动后端需加载模型，约需 10~20 秒才能响应。" -ForegroundColor White
 Write-Host "  · 若后端响应慢，可在浏览器等待片刻后刷新前端页面。" -ForegroundColor White
+

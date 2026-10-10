@@ -1,6 +1,6 @@
 <template>
-  <div class="flex-col w-full p-8">
-    <div class="flex items-center justify-between mb-8">
+  <div class="team-page pa-page flex-col w-full p-8">
+    <div class="pa-page-heading flex items-center justify-between mb-8">
       <h1 class="text-2xl font-bold">管理团队</h1>
       <p class="text-sm text-gray-500">团队成员共享同一知识库与对话</p>
     </div>
@@ -18,7 +18,7 @@
               v-model="draftTeamName"
               aria-label="新团队名称"
               maxlength="50"
-              class="h-9 min-w-48 rounded-md border border-gray-300 bg-white px-3 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
+              class="h-9 min-w-48 rounded-md border border-gray-300 bg-white px-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               :disabled="savingName"
               @keyup.enter="saveTeamName"
               @keyup.esc="cancelRename"

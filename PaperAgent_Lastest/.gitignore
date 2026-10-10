@@ -37,3 +37,13 @@ models/
 *.csv
 *.zip
 *.7z
+
+# Required self-hosted editor runtime assets
+!PaperQuery_Frontend/public/vendor/**/dist/
+!PaperQuery_Frontend/public/vendor/**/dist/**
+
+# Evaluation outputs and local caches
+**/raw_results/
+**/metrics/
+**/isolated_index/
+**/daily_recommendations/

@@ -28,6 +28,8 @@ Copy-Item .env.example .env
 cd ..\PaperQuery_Frontend
 npm ci
 Copy-Item config\.env.example config\.env.dev
+# 开发模式直连本地后端；生产部署可继续使用 /api
+(Get-Content config\.env.dev) -replace "VITE_API_BASE_URL=/api", "VITE_API_BASE_URL=http://127.0.0.1:8001" | Set-Content config\.env.dev -Encoding utf8
 cd ..
 .\start_all.ps1
 ```
@@ -50,3 +52,13 @@ cd .\PaperQuery_Backend
 - Windows 依赖清单为 `PaperQuery_Backend/req_win.txt`。`requirement.txt` 包含其他平台和可选组件，不建议在 Windows 上直接安装。
 
 生产构建可复制 `config/.env.example` 为 `config/.env.prod`，按部署地址修改 `VITE_API_BASE_URL`，再运行 `npm run build`。若使用 `/api`，请在反向代理中将该路径转发到后端 8001 端口。
+
+
+## 2026-10-10 版本更新
+
+- 全站蓝白设计、动态登录封面与单行品牌 slogan。
+- 论文自定义名称；改进论文选择、PDF 选区高亮及论文内问答显示。
+- 智能问答与深度研究完成时提供跨页面提醒。
+- 今日推荐在本地归纳科研兴趣，仅向 arXiv/OpenAlex 发送检索关键词。
+- 深度研究对比表渲染、Word 导出和复制；AI 回答支持独立复制。
+- 完整前后端源码、依赖清单及必要静态资源；不包含真实 .env、运行数据与模型权重。

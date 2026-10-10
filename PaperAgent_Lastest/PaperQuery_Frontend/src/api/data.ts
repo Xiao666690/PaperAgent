@@ -94,6 +94,17 @@ export const deleteKnowledge = async (knowledgeIDs: string[]) => {
   }
 }
 
+export const renameDocument = async (knowledgeID: string, documentID: string, documentName: string) => {
+  try {
+    const resp = await api.post('/document/rename', { knowledgeID, documentID, documentName }, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
+    })
+    return resp.data
+  } catch (e: any) {
+    throw new Error(e.response?.data?.detail || e.response?.data?.msg || e.message || '重命名失败')
+  }
+}
+
 export const getDocumentList = async (knowledgeID: string) => {
   // 向后端请求获取文档列表
   try {

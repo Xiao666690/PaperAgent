@@ -3,6 +3,7 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -12,6 +13,27 @@ from core.backend.router.dependencies import get_db
 from core.backend.utils.utils import get_current_user
 
 router = APIRouter()
+
+
+class RecommendationRequest(BaseModel):
+    chat_queries: list[str] = Field(default_factory=list, max_length=30)
+    refresh: bool = False
+
+
+@router.post('/dashboard/recommendations')
+async def daily_recommendations(payload: RecommendationRequest, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    from core.backend.services.daily_recommendations import build_daily_recommendations
+    documents = db.query(Document).filter(Document.lid == user.workspace_lid).order_by(Document.createTime.desc()).limit(35).all()
+    tasks = db.query(ResearchTask).filter(ResearchTask.lid == user.workspace_lid).order_by(ResearchTask.created_at.desc()).limit(20).all()
+    libraries = db.query(Knowledge).filter(Knowledge.lid == user.workspace_lid).limit(12).all()
+    evidence = {
+        'papers': [{'name': d.documentName, 'tags': d.tags or '', 'abstract': (d.documentDescription or '')[:350]} for d in documents],
+        'research_goals': [t.goal[:500] for t in tasks],
+        'libraries': [{'name': k.knowledgeName, 'description': (k.knowledgeDescription or '')[:250]} for k in libraries],
+        'recent_questions': [query.strip()[:500] for query in payload.chat_queries if query.strip()],
+    }
+    result = await run_in_threadpool(build_daily_recommendations, f'{user.workspace_lid}:{user.username}', evidence, payload.refresh)
+    return {'status_code': 200, 'data': {k: v for k, v in result.items() if k != 'fingerprint'}}
 
 
 class ReadingPulse(BaseModel):
