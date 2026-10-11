@@ -1,17 +1,11 @@
 <script setup lang="ts">
-import { Search, FileText, ListChecks } from 'lucide-vue-next'
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Search, FileText, ListChecks, Network, Database, BarChart3, UserRound, ArrowUpRight, ArrowRight, Sparkles, Check, Eye, EyeOff, Pause, Play, LoaderCircle, ShieldCheck } from 'lucide-vue-next'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { ElNotification } from 'element-plus'
 import { login, register } from '@/api/auth'
+import CosmicBackground from './CosmicBackground.vue'
 import paperAgentMark from '@/assets/img/paperagent-mark.png'
 
 const username = ref('')
@@ -20,6 +14,9 @@ const confirmPassword = ref('')
 const registering = ref(false)
 const teamName = ref('') // 注册时填团队名 = 提交加入申请（待管理员审批）
 const busy = ref(false)
+const showPassword = ref(false)
+const motionPaused = ref(false)
+const formFocused = ref(false)
 const router = useRouter()
 
 const url = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001'
@@ -53,7 +50,6 @@ const Login = async () => {
     ElNotification({
       title: '登录成功',
       type: 'success',
-      customClass: 'login-notify-fade-up',
     })
     router.push('/home')
   } catch (error) {
@@ -62,8 +58,7 @@ const Login = async () => {
         title: registering.value ? '注册失败' : '登录失败',
         type: 'error',
         message: error.message,
-        customClass: 'login-notify-fade-up',
-      })
+        })
       console.error('登录失败:', error)
     } else {
       // 处理非 Error 对象的情况
@@ -71,403 +66,49 @@ const Login = async () => {
         title: registering.value ? '注册失败' : '登录失败',
         type: 'error',
         message: '发生未知错误',
-        customClass: 'login-notify-fade-up',
-      })
+        })
     }
   } finally { busy.value = false }
 }
 </script>
 
 <template>
-  <main class="login-page">
-    <section class="login-shell">
-      <!-- 左侧品牌叙事区（≥1024px 显示，<1024px 隐藏） -->
-      <div class="brand-panel">
-        <div class="brand-panel-inner">
-          <div class="brand-logo">
-            <span class="brand-logo-badge">
-              <img :src="paperAgentMark" alt="PaperAgent 标志" />
-            </span>
-            <span class="brand-wordmark">PaperAgent</span>
-          </div>
-
-          <div class="brand-headline">
-            <h1>可信智能研究工作台</h1>
-            <p>阅读、理解与研究你的论文</p>
-          </div>
-
-          <div class="brand-features">
-            <div class="feature-card">
-              <span class="feature-icon"><Search /></span>
-              <span class="feature-text">证据可溯源</span>
-            </div>
-            <div class="feature-card">
-              <span class="feature-icon"><FileText /></span>
-              <span class="feature-text">混合检索问答</span>
-            </div>
-            <div class="feature-card">
-              <span class="feature-icon"><ListChecks /></span>
-              <span class="feature-text">科研任务编排</span>
-            </div>
-          </div>
+  <main class="discovery-login cosmic-login" :class="{ 'motion-paused': motionPaused }">
+    <button type="button" class="mobile-motion-toggle" :aria-label="motionPaused ? '播放背景动画' : '暂停背景动画'" :aria-pressed="motionPaused" @click="motionPaused = !motionPaused"><Play v-if="motionPaused" :size="14" /><Pause v-else :size="14" /></button>
+    <CosmicBackground :paused="motionPaused || formFocused" />
+    <div class="research-orbit-icons" aria-hidden="true"><span class="orbit-science orbit-network"><Network :size="28" :stroke-width="1.4" /></span><span class="orbit-science orbit-database"><Database :size="27" :stroke-width="1.4" /></span><span class="orbit-science orbit-paper"><FileText :size="28" :stroke-width="1.4" /></span><span class="orbit-science orbit-chart"><BarChart3 :size="27" :stroke-width="1.4" /></span></div>
+    <div class="discovery-layout">
+      <section class="discovery-cover" aria-labelledby="cover-title">
+        <div class="cover-brand"><span class="cover-mark"><img :src="paperAgentMark" alt="" /></span><span>PaperAgent</span><span class="brand-edition">RESEARCH WORKSPACE</span></div>
+        <div class="cover-story"><span class="cover-eyebrow"><span /> 为持续探索而生</span><h1 id="cover-title" class="discovery-slogan"><span class="slogan-text">让论文向发现更进一步</span><span class="slogan-aura" aria-hidden="true">让论文向发现更进一步</span><span class="slogan-light" aria-hidden="true" /></h1><p>让资料成为证据，让想法成为研究。<br />你的论文、问题与成果，在这里持续连接。</p></div>
+        <div class="research-scene" aria-hidden="true">
+          <div class="scene-grid" /><div class="scene-halo" />
+          <svg class="scene-connectors" viewBox="0 0 640 300" fill="none"><path d="M140 160 C215 160 200 117 295 117 S380 190 490 190" stroke="#d3caf6" stroke-width="1.5" /><path d="M140 180 C220 250 345 260 490 210" stroke="#ddd7f3" stroke-width="1" stroke-dasharray="4 6" /></svg>
+          <span class="connection-particle particle-one" /><span class="connection-particle particle-two" /><span class="connection-particle particle-three" />
+          <div class="scene-paper scene-float-one"><span class="paper-back paper-back-one" /><span class="paper-back paper-back-two" /><div class="paper-front"><span class="paper-kicker"><FileText :size="14" /> RESEARCH SOURCE</span><strong>每一个问题，<br />始于一份资料。</strong><span class="paper-line long" /><span class="paper-line" /><span class="paper-line short" /><div class="paper-highlight"><span /><span /></div><span class="paper-foot">PDF · 论文与研究资料</span></div><span class="scene-label">01 / 研究资料</span></div>
+          <div class="scene-evidence scene-float-two"><div class="evidence-symbol"><Search :size="27" :stroke-width="1.5" /><span class="evidence-ring" /></div><div class="evidence-chip"><Check :size="13" /> 让回答有据可循</div><span class="scene-label">02 / 证据智能</span></div>
+          <div class="scene-result scene-float-three"><span class="result-kicker"><Sparkles :size="14" /> NEXT DISCOVERY</span><strong>研究，在此推进。</strong><div class="result-step"><span><Check :size="11" /></span><i class="result-line" /></div><div class="result-step"><span><Check :size="11" /></span><i class="result-line short" /></div><div class="result-step"><span class="result-current" /><i class="result-line" /></div><div class="result-bottom"><span>连接下一轮研究</span><ArrowUpRight :size="16" /></div><span class="scene-label">03 / 受控科研执行</span></div>
+          <span class="scene-spark spark-one">+</span><span class="scene-spark spark-two">+</span><span class="scene-caption">SOURCE → EVIDENCE → DISCOVERY</span>
         </div>
-
-        <p class="brand-tagline">Your private workspace for academic discovery.</p>
-      </div>
-
-      <!-- 右侧登录表单区 -->
-      <div class="form-panel">
-        <Card class="login-card">
+        <div class="cover-bottom"><div class="cover-capabilities"><span><ShieldCheck :size="15" /> 证据可追溯</span><span><ListChecks :size="15" /> 执行有边界</span><span><Sparkles :size="15" /> 上下文持续连接</span></div><button type="button" class="motion-toggle" :aria-pressed="motionPaused" :aria-label="motionPaused ? '播放封面动画' : '暂停封面动画'" @click="motionPaused = !motionPaused"><Play v-if="motionPaused" :size="14" /><Pause v-else :size="14" /></button></div>
+      </section>
+      <section class="discovery-form-panel" aria-label="账户登录与注册" @focusin="formFocused = true" @focusout="formFocused = !!($event.relatedTarget && $event.currentTarget && ($event.currentTarget as HTMLElement).contains($event.relatedTarget as Node))">
+        <div class="auth-card">
+          <div class="auth-heading"><span class="auth-eyebrow"><UserRound :size="15" />{{ registering ? '创建账户' : '账户登录' }}</span><h2>{{ registering ? '创建 PaperAgent 账户' : '登录 PaperAgent' }}</h2><p>{{ registering ? '创建账户，让每一次探索留下成果。' : '继续上一次思考，开启下一次发现。' }}</p></div>
           <form @submit.prevent="Login">
-            <CardHeader>
-              <CardTitle>{{ registering ? '创建 PaperAgent 账户' : '欢迎回来' }}</CardTitle>
-              <p class="card-description">{{ registering ? '注册后即可建立自己的论文库与研究工作空间' : '登录后继续访问你的论文库与研究任务' }}</p>
-            </CardHeader>
-
-            <CardContent>
-              <div class="grid items-center w-full gap-4">
-                <div class="flex flex-col space-y-1.5">
-                  <Label for="username">用户名</Label>
-                  <Input
-                    id="username"
-                    v-model="username"
-                    placeholder="请输入用户名"
-                    autocomplete="username"
-                    required
-                  />
-                </div>
-                <div class="flex flex-col space-y-1.5">
-                  <Label for="password">密码</Label>
-                  <Input
-                    id="password"
-                    v-model="password"
-                    type="password"
-                    placeholder="请输入密码"
-                    :autocomplete="registering ? 'new-password' : 'current-password'"
-                    :minlength="registering ? 8 : undefined"
-                    required
-                  />
-                </div>
-                <div v-if="registering" class="flex flex-col space-y-1.5">
-                  <Label for="confirm-password">确认密码</Label>
-                  <Input id="confirm-password" v-model="confirmPassword" type="password" autocomplete="new-password" placeholder="再次输入密码" required />
-                </div>
-                <div v-if="registering" class="flex flex-col space-y-1.5">
-                  <Label for="team-name">团队名（可选）</Label>
-                  <Input
-                    id="team-name"
-                    v-model="teamName"
-                    placeholder="填写团队管理员名字，如 admin"
-                    autocomplete="off"
-                  />
-                  <p class="team-name-hint">填了团队名 = 提交加入申请，管理员通过后生效</p>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter class="login-footer">
-              <Button type="submit" class="login-button" :disabled="busy">{{ busy ? '请稍候…' : registering ? '注册账户' : '登录' }}</Button>
-              <button type="button" class="auth-switch" @click="registering = !registering; confirmPassword = ''">{{ registering ? '已有账户？返回登录' : '没有账户？立即注册' }}</button>
-              <p v-if="!registering">请使用已创建的账户登录</p>
-            </CardFooter>
+            <div class="auth-fields"><div class="auth-field"><Label for="username">用户名</Label><Input id="username" v-model="username" placeholder="请输入用户名" autocomplete="username" required :disabled="busy" /></div>
+              <div class="auth-field"><Label for="password">密码</Label><div class="password-wrap"><Input id="password" v-model="password" :type="showPassword ? 'text' : 'password'" placeholder="请输入密码" :autocomplete="registering ? 'new-password' : 'current-password'" :minlength="registering ? 8 : undefined" required :disabled="busy" /><button type="button" class="password-toggle" :aria-label="showPassword ? '隐藏密码' : '显示密码'" :aria-pressed="showPassword" @click="showPassword = !showPassword"><EyeOff v-if="showPassword" :size="18" /><Eye v-else :size="18" /></button></div></div>
+              <div v-if="registering" class="auth-field"><Label for="confirm-password">确认密码</Label><Input id="confirm-password" v-model="confirmPassword" type="password" autocomplete="new-password" placeholder="再次输入密码" required :disabled="busy" /></div>
+              <div v-if="registering" class="auth-field"><Label for="team-name">团队名 <span class="field-optional">（可选）</span></Label><Input id="team-name" v-model="teamName" placeholder="填写团队管理员名字" autocomplete="off" :disabled="busy" /><p class="auth-field-hint">管理员批准后即可加入团队工作空间。</p></div>
+            </div>
+            <Button type="submit" class="discovery-submit" :disabled="busy" :aria-busy="busy"><LoaderCircle v-if="busy" class="auth-spinner" :size="18" /><span>{{ busy ? '正在连接…' : registering ? '创建账户' : '进入研究空间' }}</span><ArrowRight v-if="!busy" :size="18" /></Button>
+            <div class="auth-divider"><span /> <i>{{ registering ? '已经有自己的空间？' : '第一次使用 PaperAgent？' }}</i><span /></div>
+            <button type="button" class="discovery-auth-switch" :disabled="busy" @click="registering = !registering; confirmPassword = ''; showPassword = false">{{ registering ? '返回登录' : '创建一个账户' }}<ArrowUpRight :size="15" /></button>
+            <p v-if="!registering" class="auth-demo">本地体验账号：admin / 123456</p>
           </form>
-        </Card>
-      </div>
-    </section>
+        </div>
+        <p class="auth-footnote"><span class="auth-footnote-mark" /> 从论文到发现 · 在同一个研究空间里</p>
+      </section>
+    </div>
   </main>
 </template>
-
-<style scoped>
-.login-page {
-  display: grid;
-  width: 100%;
-  min-height: 100vh;
-  place-items: center;
-  color: #333333;
-  background: #e9e6f9;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
-    "PingFang SC", "Helvetica Neue", Arial, sans-serif;
-}
-.login-shell {
-  display: flex;
-  width: 100%;
-  min-height: 100vh;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  background: #e9e6f9;
-}
-.login-shell::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(rgba(109, 91, 208, 0.15) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(109, 91, 208, 0.15) 1px, transparent 1px);
-  background-size: 44px 44px;
-  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 50%, transparent 100%);
-  mask-image: linear-gradient(90deg, #000 0%, #000 50%, transparent 100%);
-}
-
-/* ===== 左侧品牌叙事区（新拟物浅色同色系，右区布局留空） ===== */
-.brand-panel {
-  display: none;
-  flex: none;
-  width: 55%;
-  min-height: 100vh;
-  flex-direction: column;
-  justify-content: center;
-  padding: 32px 24px 128px 150px;
-  color: #333333;
-  position: relative;
-  overflow: hidden;
-  background: #e9e6f9;
-  box-sizing: border-box;
-}
-.brand-panel-inner {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  justify-content: center;
-  gap: 38px;
-  position: relative;
-}
-.brand-logo {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  margin-bottom: 12px;
-}
-.brand-logo-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 68px;
-  height: 68px;
-  border-radius: 50%;
-  background: #e7e9f0;
-  box-shadow:
-    4px 4px 8px #acb2bd,
-    -4px -4px 8px #ffffff;
-}
-.brand-logo-badge img {
-  width: 48px;
-  height: 48px;
-  object-fit: contain;
-}
-.brand-wordmark {
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: #333333;
-}
-.brand-headline h1 {
-  margin: 0;
-  font-size: 44px;
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: 0.01em;
-  color: #333333;
-}
-.brand-headline p {
-  margin: 14px 0 0;
-  color: #6b7280;
-  font-size: 16px;
-}
-.brand-features {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  max-width: 360px;
-}
-.feature-card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 19px 22px;
-  border: none;
-  border-radius: 16px;
-  background: #e7e9f0;
-  box-shadow:
-    4px 4px 8px #acb2bd,
-    -4px -4px 8px #ffffff;
-  font-size: 17px;
-  font-weight: 500;
-  color: #333333;
-  transition: all 0.3s ease-in-out;
-}
-.feature-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: #e9e6f9;
-  color: #6d5bd0;
-  flex-shrink: 0;
-  box-shadow:
-    inset 2px 2px 4px rgba(0, 0, 0, 0.08),
-    inset -2px -2px 4px rgba(255, 255, 255, 0.8);
-}
-.feature-icon :deep(svg) {
-  width: 24px;
-  height: 24px;
-}
-.brand-tagline {
-  margin: 0;
-  color: #6b7280;
-  font-size: 12px;
-  letter-spacing: 0.04em;
-}
-
-/* ===== 右侧登录表单区 ===== */
-.form-panel {
-  display: flex;
-  flex: none;
-  width: 45%;
-  min-height: 100vh;
-  align-items: center;
-  justify-content: center;
-  padding: 28px;
-  box-sizing: border-box;
-  background: transparent;
-}
-.login-card {
-  width: 100%;
-  max-width: 390px;
-  border: none;
-  border-radius: 24px;
-  background: #e9ebf2;
-  transition: all 0.3s ease-in-out;
-  box-shadow:
-    8px 8px 16px #acb2bd,
-    -8px -8px 16px #ffffff;
-}
-.login-card :deep(h3) {
-  font-size: 19px;
-  font-weight: 600;
-  color: #333333;
-}
-.card-description {
-  margin: 5px 0 0;
-  color: #6b7280;
-  font-size: 12px;
-  line-height: 1.5;
-}
-.login-card :deep(input) {
-  height: 48px;
-  padding: 0 16px;
-  border: none;
-  border-radius: 14px;
-  background: #d5dbe6;
-  color: #333333;
-  box-shadow:
-    inset 6px 6px 12px #acb2bd,
-    inset -6px -6px 12px #ffffff;
-  transition: box-shadow 0.3s ease-in-out;
-}
-.login-card :deep(input:focus) {
-  outline: none;
-  box-shadow:
-    inset 2px 2px 4px #acb2bd,
-    inset -2px -2px 4px #ffffff,
-    0 0 0 3px rgba(109, 91, 208, 0.2);
-}
-.team-name-hint {
-  margin: 0;
-  color: #8a8fa3;
-  font-size: 11px;
-  line-height: 1.4;
-}
-.login-footer {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 0 24px 24px;
-}
-.login-button {
-  width: 100%;
-  height: 48px;
-  border: none;
-  border-radius: 14px;
-  color: #fff;
-  background: #6d5bd0;
-  box-shadow:
-    8px 8px 16px #acb2bd,
-    -8px -8px 16px #ffffff;
-  transition: all 0.3s ease-in-out;
-}
-.login-button:hover {
-  background: #5e4bc2;
-  box-shadow:
-    4px 4px 8px #acb2bd,
-    -4px -4px 8px #ffffff;
-}
-.login-button:active {
-  box-shadow:
-    inset 4px 4px 8px #acb2bd,
-    inset -4px -4px 8px #ffffff;
-}
-.login-footer p {
-  margin: 0;
-  color: #6b7280;
-  font-size: 10px;
-  text-align: center;
-}
-.auth-switch { color: #5e4bc2; font-size: 13px; font-weight: 600; }
-.auth-switch:hover { text-decoration: underline; }
-
-/* ===== 响应式降级：<1024px 只保留表单 ===== */
-@media (min-width: 1024px) {
-  .brand-panel {
-    display: flex;
-  }
-}
-@media (max-width: 1023px) {
-  .brand-panel {
-    display: none;
-  }
-  .form-panel {
-    width: 100%;
-    padding: 18px;
-  }
-  .login-card {
-    border-radius: 22px;
-    box-shadow: none;
-  }
-}
-</style>
-
-<style>
-/* 登录弹窗：淡入 + 上滑（弹窗 teleport 到 body，故用非 scoped 全局样式覆盖） */
-.login-notify-fade-up {
-  animation-name: login-notify-fade-in-up !important;
-  animation-duration: 600ms !important;
-  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) !important;
-  animation-fill-mode: both !important;
-  border-radius: 16px !important;
-  box-shadow:
-    6px 6px 12px #b8bcc2,
-    -6px -6px 12px #ffffff !important;
-}
-
-@keyframes login-notify-fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .login-notify-fade-up {
-    animation: none !important;
-    opacity: 1 !important;
-    transform: none !important;
-  }
-}
-</style>

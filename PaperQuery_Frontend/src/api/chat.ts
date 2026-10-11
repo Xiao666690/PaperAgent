@@ -2,10 +2,17 @@ import axios from "@/plugins/axios";
 
 import { parsePack2 } from "@/utils/parsePack";
 
-export const uploadFile = async (file: File) => {
+export const uploadFile = async (
+  file: File,
+  options: { addToLibrary?: boolean; knowledgeID?: string } = {},
+) => {
   try {
     const formData = new FormData();
     formData.append("documentFile", file);
+    formData.append("addToLibrary", String(Boolean(options.addToLibrary)));
+    if (options.knowledgeID) {
+      formData.append("knowledgeID", options.knowledgeID);
+    }
     const resp = await axios.post(
       `${import.meta.env.VITE_API_BASE_URL}/document/multi_file_chat_upload`,
       formData,
@@ -19,6 +26,7 @@ export const uploadFile = async (file: File) => {
     return resp.data.data;
   } catch (error) {
     console.log(error);
+    throw error;
   }
 };
 
@@ -43,6 +51,9 @@ export const getAnswerStream = async (
         model: model,
       }),
     });
+    if (!res.ok) {
+      throw new Error(`请求失败：HTTP ${res.status}`);
+    }
     if (!res.body) {
       throw new Error("Network response was not ok");
     }
@@ -77,6 +88,7 @@ export const getAnswerStream = async (
       "Error:",
       error.response ? error.response.data : error.message
     );
+    throw error;
   }
 };
 

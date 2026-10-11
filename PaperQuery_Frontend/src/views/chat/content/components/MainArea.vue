@@ -2,15 +2,25 @@
 <template>
   <div
     ref="messageContainer"
-    class="flex justify-center overflow-y-auto p-8 mb-14"
+    class="chat-messages flex justify-center overflow-y-auto p-6 min-h-0"
   >
-    <div class="w-1/2">
+    <div class="w-full max-w-4xl">
       <Empty v-show="messageList.length === 0" />
       <div v-for="message in messageList" :key="message.id" class="mb-10">
         <MessageBox
           :role="message.role"
           :content="message.content"
           :model-label="message.modelLabel"
+          :citations="message.citations"
+          :external-papers="message.externalPapers"
+          :search-status="message.searchStatus"
+          :search-state="message.searchState"
+          :search-steps="message.searchSteps"
+          :status="message.status"
+          :started-at="message.createdAt"
+          :thinking-ms="message.thinkingMs"
+          :duration-ms="message.durationMs"
+          :documents="message.documents"
         />
       </div>
     </div>

@@ -5,6 +5,8 @@ import type { Message } from './messageList'
 export type ChatDocumentSnapshot = {
   documentID?: string
   documentName: string
+  knowledgeID?: string
+  source?: 'library' | 'upload'
 }
 
 export type ChatSession = {
@@ -14,7 +16,10 @@ export type ChatSession = {
   model: string
   modelLabel: string
   memory: string
+  summary?: string
+  isTitleCustomized?: boolean
   documents: ChatDocumentSnapshot[]
+  selectedDocumentIDs?: string[]
   messages: Message[]
 }
 
@@ -36,7 +41,14 @@ export const useChatHistoryStore = defineStore('chatHistory', () => {
   function loadFromStorage() {
     try {
       const raw = localStorage.getItem(getStorageKey())
-      state.sessions = raw ? JSON.parse(raw) : []
+      const saved = raw ? JSON.parse(raw) : []
+      state.sessions = Array.isArray(saved)
+        ? saved.map((session: ChatSession) => ({
+            ...session,
+            summary: session.summary || session.memory || '',
+            isTitleCustomized: Boolean(session.isTitleCustomized),
+          }))
+        : []
     } catch (error) {
       console.error('Load chat history failed:', error)
       state.sessions = []
@@ -47,19 +59,24 @@ export const useChatHistoryStore = defineStore('chatHistory', () => {
     localStorage.setItem(getStorageKey(), JSON.stringify(state.sessions))
   }
 
-  function saveSnapshot(snapshot: Omit<ChatSession, 'id' | 'updatedAt'>) {
+  function saveSnapshot(snapshot: Omit<ChatSession, 'id' | 'updatedAt'>, sessionId?: string) {
     if (snapshot.messages.length === 0) return
 
-    if (!state.currentSessionId) {
+    if (!sessionId && !state.currentSessionId) {
       state.currentSessionId = createSessionId()
     }
 
+    const targetId = sessionId || state.currentSessionId
+    const index = state.sessions.findIndex(item => item.id === targetId)
+    const previous = index >= 0 ? state.sessions[index] : undefined
     const session: ChatSession = {
       ...snapshot,
-      id: state.currentSessionId,
+      id: targetId,
       updatedAt: Date.now(),
+      title: previous?.isTitleCustomized ? previous.title : snapshot.title,
+      summary: snapshot.summary || snapshot.memory || previous?.summary || '',
+      isTitleCustomized: previous?.isTitleCustomized || false,
     }
-    const index = state.sessions.findIndex(item => item.id === session.id)
     if (index >= 0) {
       state.sessions[index] = session
     } else {
@@ -86,6 +103,28 @@ export const useChatHistoryStore = defineStore('chatHistory', () => {
     persist()
   }
 
+  function renameSession(sessionId: string, title: string) {
+    const session = state.sessions.find(item => item.id === sessionId)
+    const normalized = title.trim().slice(0, 60)
+    if (!session || !normalized) return false
+    session.title = normalized
+    session.isTitleCustomized = true
+    session.updatedAt = Date.now()
+    persist()
+    return true
+  }
+
+  function updateSessionSummary(sessionId: string, summary: string) {
+    const session = state.sessions.find(item => item.id === sessionId)
+    const normalized = summary.trim()
+    if (!session || !normalized) return false
+    session.summary = normalized
+    session.memory = normalized
+    session.updatedAt = Date.now()
+    persist()
+    return true
+  }
+
   const sessionList = computed(() => state.sessions)
 
   loadFromStorage()
@@ -98,5 +137,7 @@ export const useChatHistoryStore = defineStore('chatHistory', () => {
     startNewSession,
     useSession,
     removeSession,
+    renameSession,
+    updateSessionSummary,
   }
 })

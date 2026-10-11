@@ -108,7 +108,7 @@ def chat_with_paper_generate_flow(chat: Chat_Request, request: Request, token: s
 
 
 @router.post("/chat/mulit_file_chat_generate_flow")
-def chat_multi_file_generate_flow(chat: TMP_Chat_Request, request: Request):
+def chat_multi_file_generate_flow(chat: TMP_Chat_Request, request: Request, token: str = Depends(oauth2_scheme)):
     agent = get_chat_agent(request, chat.model)
     translator, translator_rev = get_translators()
     translatedinput = translator.translate(re.sub(r'[\n\r\t]', '', chat.question))

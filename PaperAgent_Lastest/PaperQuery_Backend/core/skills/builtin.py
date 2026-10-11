@@ -4,6 +4,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from core.skills.base import BaseSkill, SkillResult
+from core.utils.comparison_table import parse_comparison_table
 
 
 class LocalRetrievalInput(BaseModel):
@@ -87,9 +88,13 @@ class PaperCompareSkill(BaseSkill):
             f"对比问题：{data.question}\n"
             f"对比列：{columns}\n"
             f"上下文：{data.context}\n"
-            "输出 JSON：{\"columns\": [...], \"rows\": [{\"论文\": ..., ...}]}"
+            "输出 JSON：{\"columns\": [...], \"rows\": [{\"论文\": ..., ...}]}。"
+            "仅输出合法 JSON，不要添加代码块标记；每行键名必须与 columns 完全对应。"
         )
         resp = llm.invoke(prompt)
         text = resp.content if hasattr(resp, "content") else str(resp)
         artifact = {"type": "comparison_table", "title": data.question, "raw": text}
+        table = parse_comparison_table(text)
+        if table is not None:
+            artifact.update(table)
         return SkillResult(ok=True, output={"comparison": text}, artifacts=[artifact])

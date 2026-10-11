@@ -3,6 +3,7 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -12,6 +13,20 @@ from core.backend.router.dependencies import get_db
 from core.backend.utils.utils import get_current_user
 
 router = APIRouter()
+
+
+class RecommendationRequest(BaseModel):
+    chat_queries: list[str] = Field(default_factory=list, max_length=30)
+    refresh: bool = False
+
+
+@router.post('/dashboard/recommendations')
+async def daily_recommendations(payload: RecommendationRequest, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    from core.backend.services.daily_recommendations import build_daily_recommendations
+    from core.backend.services.account_research_profile import account_evidence
+    evidence = account_evidence(db, user, questions=payload.chat_queries)
+    result = await run_in_threadpool(build_daily_recommendations, f'{user.workspace_lid}:{user.username}', evidence, payload.refresh)
+    return {'status_code': 200, 'data': {k: v for k, v in result.items() if k != 'fingerprint'}}
 
 
 class ReadingPulse(BaseModel):

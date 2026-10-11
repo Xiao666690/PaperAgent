@@ -1,79 +1,50 @@
-# PaperQuery
+# PaperAgent 前端
 
-    PaperQuery 是一款知识库管理前端项目，旨在帮助用户高效管理和查询自己的文献、资料、笔记等知识内容。通过直观的展示和便捷的管理功能，用户可以更好地建立和维护自己的知识体系。
+PaperAgent 论文查询 AI Agent 的前端工作台。基于 Vue3，围绕论文知识库提供
+**Chat 可信问答**、**Research 研究编排**、**知识库/文档管理** 与 **Dashboard 概览**，
+支持 PDF 阅读、划线翻译、结构化引用（`[C#]`）点击跳转到原文对应页。
 
-## 特性
+## 主要功能页面
 
-- **知识库概览**：直观展示知识库中的知识数量、文档数量和向量数量，帮助用户快速了解知识库的整体情况。
-
-- **知识管理**：支持创建、编辑知识，并可通过可视化的方式展示知识之间的关系，帮助用户清晰地建立和维护知识体系。
-
-- **文档管理**：用户可以管理文档，包括文档列表展示、查看文档详情、删除不需要的文档等，提升文档管理效率。
-
-- **文档对话**：支持与文档进行互动，包括划线翻译、文章推荐等功能，提供智能的交互体验。
-
-- **笔记记录**：支持Markdown语法编写笔记，支持笔记的上传、下载、实时同步及导出PDF，方便用户记录和备份重要内容。
+- **Chat（问答）**：接入后端 V2 `/qa/stream`（SSE），流式回答 + 反幻觉 + 可点击引用
+- **Research（研究模式）**：任务编排（Planner→Executor→Verifier），步骤耗时时间线、产物查看
+- **Knowledge / Library**：知识库统计、文档列表、上传与向量化状态
+- **Dashboard**：系统/知识库概览
+- **PDF 阅读**：翻页、翻译、引用定位
 
 ## 技术栈
 
-- **前端框架**：Vue3
-- **UI 组件库**：ElementPlus
-- **路由管理**：Vue Router
-- **状态管理**：Pinia
-- **请求库**：Axios & Fetch
+- Vue3 + TypeScript + Vite
+- UI：Element Plus + Tailwind CSS + UnoCSS
+- 状态管理：Pinia + Vuex
+- 路由：Vue Router
+- 请求：Axios / Fetch（SSE）
 
 ## 安装和运行
 
-    请注意，该前端项目需要搭配后端项目运行。
-    后端项目https://github.com/AwesomeAgent/PaperQuery_Backend.git
+> 需先启动后端（见 `../PaperQuery_Backend/README.md` 或项目根 `快速启动.md`）。
 
-1. 克隆该项目到本地：
+```bash
+cd PaperQuery_Frontend
+npm install
+npm run dev
+```
 
-   ```bash
-   git clone https://github.com/AwesomeAgent/PaperQuery_Frontend.git
-   ```
+打开浏览器访问 `http://127.0.0.1:8080`（端口见 `vite.config.ts` 的 `server.port`）。
+后端地址在 `config/.env.dev` 中配置（默认 `http://127.0.0.1:8001`）。
 
-2. 进入项目目录：
+## 目录速览
 
-   ```bash
-   cd PaperQuery_Frontend
-   ```
-
-3. 安装依赖：
-
-   ```bash
-   npm install
-   # 或者使用 yarn
-   yarn add
-   ```
-
-4. 运行开发环境：
-
-   ```bash
-   npm run dev
-   # 或者使用 yarn
-   yarn dev
-   ```
-
-5. 打开浏览器，访问 `http://localhost:8081`（端口号根据项目配置不同而有所变化）
-
-
-## 贡献
-
-欢迎提交 Pull Request，任何形式的贡献都非常欢迎！如果你有好的想法，或者发现了问题，请随时向我们反馈。
-
-1. Fork 本仓库
-2. 创建新的分支 (`git checkout -b feature/xxx`)
-3. 提交代码 (`git commit -am 'Add feature xxx'`)
-4. Push 到分支 (`git push origin feature/xxx`)
-5. 提交 Pull Request
-
-## 联系方式
-
-- 邮箱：812473076@qq.com
-- GitHub：https://github.com/hoyii
+```
+src/
+├── views/           页面（chat / research / dashboard / library / pdf ...）
+├── components/      通用组件（PDF 阅读、时间线、气泡等）
+├── api/             后端接口封装（chat / qa / research / ...）
+├── stores/          状态（messageList / chatHistory / documentList / ...）
+├── router/          路由（含各页 document.title 设置）
+└── config/          环境变量
+```
 
 ## License
 
-该项目采用 [MIT License](LICENSE) 开源协议。
-
+MIT

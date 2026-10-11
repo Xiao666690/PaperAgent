@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import argparse
-import getpass
 import json
 import os
 import sys
@@ -58,11 +57,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="PaperAgent API 冒烟测试")
     parser.add_argument("--base-url", default="http://127.0.0.1:8001")
     parser.add_argument("--username", default=os.getenv("PAPERAGENT_TEST_USER", "admin"))
-    parser.add_argument("--password", default=os.getenv("PAPERAGENT_TEST_PASSWORD"))
+    parser.add_argument("--password", default=os.getenv("PAPERAGENT_TEST_PASSWORD", "123456"))
     parser.add_argument("--with-model", choices=("deepseek", "kimi", "zhipu"))
     args = parser.parse_args()
-    if not args.password:
-        args.password = getpass.getpass("PaperAgent password: ")
     base = args.base_url.rstrip("/")
     session = requests.Session()
     checks: list[Check] = []

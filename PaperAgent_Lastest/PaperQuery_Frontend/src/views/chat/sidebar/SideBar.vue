@@ -153,12 +153,12 @@ function formatTime(timestamp: number) {
 
 <style scoped>
 .session-card { cursor: pointer; }
-.session-card.active { border-color: #cfc9e8; background: #f5f3fa; }
+.session-card.active { border-color: #c9d9e8; background: #f3f7fa; }
 .session-actions { opacity: 0; transition: opacity .15s ease; }
 .session-card:hover .session-actions,
 .session-card:focus-within .session-actions { opacity: 1; }
-.session-actions button { display: grid; width: 25px; height: 25px; place-items: center; border: 0; border-radius: 6px; color: #72727a; background: transparent; }
-.session-actions button:hover { color: #55489d; background: #ece9f5; }
+.session-actions button { display: grid; width: 25px; height: 25px; place-items: center; border: 0; border-radius: 6px; color: #72767a; background: transparent; }
+.session-actions button:hover { color: #48749d; background: #e9eff5; }
 .session-actions button:disabled { cursor: wait; opacity: .55; }
-.session-summary { display: -webkit-box; overflow: hidden; margin: 8px 0 0; color: #777780; font-size: 11px; line-height: 1.5; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.session-summary { display: -webkit-box; overflow: hidden; margin: 8px 0 0; color: #777c80; font-size: 11px; line-height: 1.5; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 </style>

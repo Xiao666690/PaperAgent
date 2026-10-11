@@ -61,10 +61,10 @@ function handleSelect(model: ModelType | string) {
 </script>
 
 <style scoped>
-.model-trigger { display: inline-flex; height: 38px; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid #e3e3e6; border-radius: 11px; color: #343438; background: rgba(255,255,255,.92); font-size: 13px; font-weight: 600; transition: border-color .18s ease, background .18s ease, box-shadow .18s ease; }
-.model-trigger:hover { border-color: #d2cde4; background: #fff; box-shadow: 0 4px 14px rgba(32,32,36,.06); }
+.model-trigger { display: inline-flex; height: 38px; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid #e3e3e6; border-radius: 11px; color: #343638; background: rgba(255,255,255,.92); font-size: 13px; font-weight: 600; transition: border-color .18s ease, background .18s ease, box-shadow .18s ease; }
+.model-trigger:hover { border-color: #cdd9e4; background: #fff; box-shadow: 0 4px 14px rgba(32,32,36,.06); }
 .model-trigger:focus-visible { outline: 3px solid rgba(109,91,208,.14); outline-offset: 1px; }
-.model-dot { width: 7px; height: 7px; border-radius: 50%; background: #6d5bd0; box-shadow: 0 0 0 3px #eeebf8; }
-:deep(.el-dropdown-menu__item) { display: flex; min-width: 132px; justify-content: space-between; gap: 20px; border-radius: 7px; color: #55555b; }
-:deep(.el-dropdown-menu__item.is-current-model) { color: #51458f; background: #f3f1f8; font-weight: 600; }
+.model-dot { width: 7px; height: 7px; border-radius: 50%; background: #5b97d0; box-shadow: 0 0 0 3px #ebf2f8; }
+:deep(.el-dropdown-menu__item) { display: flex; min-width: 132px; justify-content: space-between; gap: 20px; border-radius: 7px; color: #55585b; }
+:deep(.el-dropdown-menu__item.is-current-model) { color: #456b8f; background: #f1f5f8; font-weight: 600; }
 </style>

@@ -15,7 +15,7 @@ export const getLibraryInfo = async () => {
     })
     return resp.data
   } catch (e: any) {
-    throw new Error(e.response.data.msg)
+    throw new Error(e.response?.data?.msg || e.message || '读取论文库失败')
   }
 }
 
@@ -63,25 +63,46 @@ export const createKnowledge = async (
 }
 
 export const editKnowledge = async (
-  token: string,
   knowledgeID: string,
   knowledgeName: string,
   knowledgeDescription?: string,
-): Promise<{}> => {
-  // 模拟向后端请求编辑知识
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        status_code: 200,
-        msg: '编辑知识成功',
-        data: {
-          knowledgeID: knowledgeID,
-          knowledgeName: knowledgeName,
-          knowledgeDescription: knowledgeDescription,
-        },
-      })
-    }, 1000)
-  })
+) => {
+  try {
+    const token = localStorage.getItem('token')
+    const resp = await api.post(
+      '/knowledges/updateKnowledge',
+      { knowledgeID, knowledgeName, knowledgeDescription },
+      { headers: { Authorization: token ? `Bearer ${token}` : undefined } },
+    )
+    return resp.data
+  } catch (e: any) {
+    throw new Error(e.response?.data?.msg || e.message || '编辑知识失败')
+  }
+}
+
+export const deleteKnowledge = async (knowledgeIDs: string[]) => {
+  try {
+    const token = localStorage.getItem('token')
+    const resp = await api.post(
+      '/knowledges/deleteKnowledge',
+      { knowledgeIDs },
+      { headers: { Authorization: token ? `Bearer ${token}` : undefined } },
+    )
+    return resp.data
+  } catch (e: any) {
+    throw new Error(e.response?.data?.msg || e.message || '删除知识失败')
+  }
+}
+
+export const renameDocument = async (knowledgeID: string, documentID: string, documentName: string) => {
+  try {
+    const resp = await api.post('/document/rename', { knowledgeID, documentID, documentName }, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
+    })
+    return resp.data
+  } catch (e: any) {
+    throw new Error(e.response?.data?.detail || e.response?.data?.msg || e.message || '重命名失败')
+  }
 }
 
 export const getDocumentList = async (knowledgeID: string) => {
@@ -217,10 +238,11 @@ export const translateText = async (text: string) => {
       headers: {
         Authorization: token,
       },
+      timeout: 90000,
     })
     return resp.data
   } catch (e: any) {
-    throw new Error(e.response.data.msg)
+    throw new Error(e.response?.data?.detail || e.response?.data?.msg || e.message || '翻译失败')
   }
 }
 

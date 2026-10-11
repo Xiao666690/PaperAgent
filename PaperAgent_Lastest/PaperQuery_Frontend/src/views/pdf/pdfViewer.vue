@@ -6,6 +6,7 @@ import { translateText } from '@/api/data'
 import Button from '@/components/ui/button/Button.vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { calibrateTextLayer, selectionMarks, type SelectionMark } from './selectionHighlight'
 
 const props = defineProps({
   knowledgeID: {
@@ -23,9 +24,11 @@ const route = useRoute()
 
 // 手动 fetch 带鉴权头获取 PDF，避免 usePDF 直连 URL 因缺少 token 返回 401 导致左侧空白
 const pdfUrl = ref<string | null>(null)
+const pdfError = ref('')
 const { pdf, pages } = usePDF(pdfUrl)
 
 async function loadPdf() {
+  pdfError.value = ''
   try {
     const token = localStorage.getItem('token')
     const resp = await fetch(
@@ -33,11 +36,15 @@ async function loadPdf() {
       { headers: token ? { Authorization: `Bearer ${token}` } : {} },
     )
     if (!resp.ok) throw new Error(`PDF 加载失败 (HTTP ${resp.status})`)
+    if (!(resp.headers.get('content-type') || '').includes('application/pdf')) {
+      throw new Error('未读取到有效的 PDF 文件，请刷新后重试')
+    }
     const blob = await resp.blob()
     if (pdfUrl.value) URL.revokeObjectURL(pdfUrl.value)
     pdfUrl.value = URL.createObjectURL(blob)
   } catch (error: any) {
-    ElMessage.error(error?.message || 'PDF 加载失败')
+    pdfError.value = error?.message || 'PDF 加载失败'
+    ElMessage.error(pdfError.value)
   }
 }
 
@@ -45,6 +52,28 @@ const store = useStore()
 const page = ref(1)
 const container = ref<HTMLElement | null>(null)
 const translating = ref(false)
+const highlights = ref<SelectionMark[]>([])
+let highlightFrame = 0
+function updateHighlights() {
+  cancelAnimationFrame(highlightFrame)
+  highlightFrame = requestAnimationFrame(() => {
+    const selection = window.getSelection()
+    if (selection && !selection.isCollapsed && container.value?.contains(selection.anchorNode)) {
+      highlights.value = selectionMarks(selection, container.value)
+    }
+  })
+}
+function clearSelection() {
+  cancelAnimationFrame(highlightFrame)
+  highlights.value = []
+  window.getSelection()?.removeAllRanges()
+  selectionVersion++
+  clearTimeout(translationTimer)
+  translating.value = false
+  store.commit('setSelectedText', '')
+  store.commit('setTranslatedText', '')
+  emit('selection', '', page.value)
+}
 const zoom = ref(100)
 const containerWidth = ref(0)
 const minZoom = 50
@@ -67,10 +96,25 @@ const handleWheel = (event: WheelEvent) => {
   setZoom(zoom.value + (event.deltaY < 0 ? zoomStep : -zoomStep))
 }
 
+const renderedPages = new Set<number>()
+let pendingJump: number | null = null
+
 const jumpToPage = (target: number) => {
   const valid = Math.max(1, Math.min(target, pages.value || 1))
   page.value = valid
+  // Earlier pages must have their final canvas height before calculating the destination.
+  if (Array.from({ length: valid }, (_, index) => index + 1).some(number => !renderedPages.has(number))) {
+    pendingJump = valid
+    return
+  }
+  pendingJump = null
   container.value?.querySelector<HTMLElement>(`[data-pdf-page="${valid}"]`)?.scrollIntoView({ block: 'start' })
+}
+
+const onPageRendered = async (number: number) => {
+  renderedPages.add(number)
+  await nextTick()
+  if (pendingJump !== null) jumpToPage(pendingJump)
 }
 
 const updateCurrentPage = () => {
@@ -84,7 +128,9 @@ const updateCurrentPage = () => {
 const handleMouseUp = () => {
   const selection = window.getSelection()
   const text = selection?.toString().trim() || ''
-  if (!text || !container.value?.contains(selection?.anchorNode)) return
+  if (!text) { if (highlights.value.length) clearSelection(); return }
+  if (!container.value?.contains(selection?.anchorNode)) return
+  highlights.value = selectionMarks(selection!, container.value)
   const pageElement = (selection?.anchorNode instanceof Element
     ? selection.anchorNode : selection?.anchorNode?.parentElement)?.closest<HTMLElement>('[data-pdf-page]')
   const selectedPage = Number(pageElement?.dataset.pdfPage || page.value)
@@ -108,6 +154,7 @@ const handleMouseUp = () => {
 
 onMounted(() => {
   loadPdf()
+  document.addEventListener('selectionchange', updateHighlights)
   if (container.value) {
     resizeObserver = new ResizeObserver(([entry]) => {
       containerWidth.value = entry?.target.clientWidth || 0
@@ -119,6 +166,8 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  cancelAnimationFrame(highlightFrame)
+  document.removeEventListener('selectionchange', updateHighlights)
   selectionVersion++
   clearTimeout(translationTimer)
   resizeObserver?.disconnect()
@@ -148,6 +197,7 @@ watch(() => route.query.page, async (value) => {
       <span>第 {{ page }} / {{ pages || '…' }} 页</span>
       <Button variant="ghost" :disabled="page >= pages" @click="jumpToPage(page + 1)">下一页</Button>
       <span class="reader-hint">连续滚动阅读 · 选中文字可翻译 · Ctrl＋滚轮缩放</span>
+      <Button v-if="highlights.length" variant="ghost" class="clear-selection" @click="clearSelection">清除标记</Button>
       <div class="zoom-controls" aria-label="论文缩放" title="在论文区域按 Ctrl＋鼠标滚轮也可缩放">
         <Button variant="ghost" class="zoom-button" aria-label="缩小论文" title="缩小论文" :disabled="zoom <= minZoom" @click="setZoom(zoom - zoomStep)">−</Button>
         <span class="zoom-value" aria-live="polite">{{ zoom }}%</span>
@@ -155,8 +205,12 @@ watch(() => route.query.page, async (value) => {
       </div>
     </div>
     <div ref="container" class="pdf-container" @scroll.passive="updateCurrentPage" @mouseup="handleMouseUp">
+      <div v-if="pdfError" class="pdf-error" role="alert"><p>{{ pdfError }}</p><Button variant="outline" @click="loadPdf">重新加载论文</Button></div>
       <div v-for="pageNumber in pages" :key="pageNumber" :data-pdf-page="pageNumber" class="pdf-page" :style="{ width: `${renderedPageWidth}px` }">
-        <VuePDF :pdf="pdf" :page="pageNumber" :width="renderedPageWidth" text-layer />
+        <VuePDF :pdf="pdf" :page="pageNumber" :width="renderedPageWidth" text-layer @loaded="onPageRendered(pageNumber)" @text-loaded="calibrateTextLayer" />
+        <div class="translation-highlights" aria-hidden="true">
+          <span v-for="(mark, index) in highlights.filter(m => m.page === pageNumber)" :key="index" class="translation-highlight" :style="{ left: `${mark.x * 100}%`, top: `${mark.y * renderedPageWidth}px`, width: `${mark.width * 100}%`, height: `${mark.height * renderedPageWidth}px` }" />
+        </div>
         <span class="page-label">{{ pageNumber }} / {{ pages }}</span>
       </div>
     </div>
@@ -168,7 +222,11 @@ watch(() => route.query.page, async (value) => {
 .reader-toolbar { flex: none; display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 44px; padding: 0 12px; border-bottom: 1px solid #e5e7eb; background: #f9fafb; }
 .reader-hint { margin-left: 16px; color: #6b7280; font-size: 12px; }
 .pdf-container { flex: 1; min-height: 0; overflow: auto; padding: 16px 24px 32px; background: #e9edf3; scroll-behavior: smooth; }
+.pdf-error { margin: 40px auto; max-width: 420px; padding: 24px; text-align: center; background: white; border-radius: 12px; color: #475569; }
 .pdf-page { position: relative; margin: 0 auto 16px; background: white; box-shadow: 0 2px 10px #1f29371f; scroll-margin-top: 12px; }
+.translation-highlights { position: absolute; inset: 0; pointer-events: none; z-index: 3; mix-blend-mode: multiply; overflow: hidden; }
+.translation-highlight { position: absolute; background: rgba(255, 235, 0, .45); border-radius: 1px; pointer-events: none; }
+.clear-selection { flex: none; font-size: 12px; }
 .page-label { display: block; padding: 5px; text-align: center; color: #6b7280; font-size: 12px; }
 .zoom-controls { display: flex; align-items: center; flex: none; gap: 2px; margin-left: auto; white-space: nowrap; }
 .zoom-button { width: 28px; height: 28px; padding: 0; font-size: 18px; line-height: 1; }

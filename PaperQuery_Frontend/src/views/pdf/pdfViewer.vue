@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { VuePDF, usePDF } from '@tato30/vue-pdf'
 import '@tato30/vue-pdf/style.css'
-import FloatingButton from '@/views/smallChat/floatButton.vue'
 import { useStore } from 'vuex'
-import { useScroll } from '@vueuse/core'
 import { translateText } from '@/api/data'
-import { debounce } from 'lodash'
 import Button from '@/components/ui/button/Button.vue'
-import Input from '@/components/ui/input/Input.vue'
+import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { calibrateTextLayer, selectionMarks, type SelectionMark } from './selectionHighlight'
 
 const props = defineProps({
   knowledgeID: {
@@ -20,142 +19,218 @@ const props = defineProps({
   },
 })
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
+const emit = defineEmits<{ selection: [text: string, page: number]; loaded: [] }>()
+const route = useRoute()
 
-const { pdf, pages } = usePDF(
-  `${apiBaseUrl}/document/getFile?documentID=${props.documentID}&knowledgeID=${props.knowledgeID}`,
-)
+// 手动 fetch 带鉴权头获取 PDF，避免 usePDF 直连 URL 因缺少 token 返回 401 导致左侧空白
+const pdfUrl = ref<string | null>(null)
+const pdfError = ref('')
+const { pdf, pages } = usePDF(pdfUrl)
+
+async function loadPdf() {
+  pdfError.value = ''
+  try {
+    const token = localStorage.getItem('token')
+    const resp = await fetch(
+      `${apiBaseUrl}/document/getFile?documentID=${props.documentID}&knowledgeID=${props.knowledgeID}`,
+      { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+    )
+    if (!resp.ok) throw new Error(`PDF 加载失败 (HTTP ${resp.status})`)
+    if (!(resp.headers.get('content-type') || '').includes('application/pdf')) {
+      throw new Error('未读取到有效的 PDF 文件，请刷新后重试')
+    }
+    const blob = await resp.blob()
+    if (pdfUrl.value) URL.revokeObjectURL(pdfUrl.value)
+    pdfUrl.value = URL.createObjectURL(blob)
+  } catch (error: any) {
+    pdfError.value = error?.message || 'PDF 加载失败'
+    ElMessage.error(pdfError.value)
+  }
+}
+
 const store = useStore()
-
-// 用户选中文本
-const selectedText = ref('')
-
-// 是否显示浮动按钮
-const isFloatingButtonVisible = ref(true)
-
-// 当前页码
 const page = ref(1)
-
-// 监听容器的滚动状态
-const container = ref(null)
-const { y, arrivedState } = useScroll(container)
-
-// 判断是否已经到达底部 防止一次滚动就换页
-const bottomReachedOnce = ref(false)
-const topReachedOnce = ref(false)
-
-// 滚动事件 防抖处理 防止滚动过快一次换多页
-const handleWheel = debounce((event: any) => {
-  if (event.deltaY > 0 && arrivedState.bottom) {
-    if (bottomReachedOnce.value) {
-      page.value = Math.min(page.value + 1, pages.value)
-      y.value = 0
-    } else {
-      bottomReachedOnce.value = true
+const container = ref<HTMLElement | null>(null)
+const translating = ref(false)
+const highlights = ref<SelectionMark[]>([])
+let highlightFrame = 0
+function updateHighlights() {
+  cancelAnimationFrame(highlightFrame)
+  highlightFrame = requestAnimationFrame(() => {
+    const selection = window.getSelection()
+    if (selection && !selection.isCollapsed && container.value?.contains(selection.anchorNode)) {
+      highlights.value = selectionMarks(selection, container.value)
     }
-  } else if (event.deltaY < 0 && arrivedState.top) {
-    if (topReachedOnce.value) {
-      page.value = Math.max(page.value - 1, 1)
-      y.value = 0
-    } else {
-      topReachedOnce.value = true
-    }
-  }
-}, 300)
+  })
+}
+function clearSelection() {
+  cancelAnimationFrame(highlightFrame)
+  highlights.value = []
+  window.getSelection()?.removeAllRanges()
+  selectionVersion++
+  clearTimeout(translationTimer)
+  translating.value = false
+  store.commit('setSelectedText', '')
+  store.commit('setTranslatedText', '')
+  emit('selection', '', page.value)
+}
+const zoom = ref(100)
+const containerWidth = ref(0)
+const minZoom = 50
+const maxZoom = 250
+const zoomStep = 10
+const basePageWidth = computed(() => Math.min(1050, Math.max(1, containerWidth.value - 48)))
+const renderedPageWidth = computed(() => Math.round(basePageWidth.value * zoom.value / 100))
+let resizeObserver: ResizeObserver | undefined
+let selectionVersion = 0
+let translationTimer: ReturnType<typeof setTimeout> | undefined
 
-// 监听滚动状态 重置底部和顶部状态
-watch(arrivedState, (newValue) => {
-  if (!newValue.bottom) {
-    bottomReachedOnce.value = false
-  }
-  if (!newValue.top) {
-    topReachedOnce.value = false
-  }
-})
+const setZoom = (value: number) => {
+  zoom.value = Math.max(minZoom, Math.min(maxZoom, Math.round(value / zoomStep) * zoomStep))
+}
 
-// 发送翻译请求
-const getSelectedText = async () => {
-  const selection = window.getSelection()
-  if (selection && selection.toString().length > 0) {
-    let text = selection.toString()
-    selectedText.value = text
-    try {
-      const res = await translateText(text)
-      if (res) {
-        text = res.data.text
-      }
-    } catch (error) {
-      console.error('翻译失败:', error)
-    } finally {
-      store.dispatch('updateTranslatedText', text)
-    }
+const handleWheel = (event: WheelEvent) => {
+  if (!event.ctrlKey) return
+  event.preventDefault()
+  if (event.deltaY === 0) return
+  setZoom(zoom.value + (event.deltaY < 0 ? zoomStep : -zoomStep))
+}
+
+const renderedPages = new Set<number>()
+let pendingJump: number | null = null
+
+const jumpToPage = (target: number) => {
+  const valid = Math.max(1, Math.min(target, pages.value || 1))
+  page.value = valid
+  // Earlier pages must have their final canvas height before calculating the destination.
+  if (Array.from({ length: valid }, (_, index) => index + 1).some(number => !renderedPages.has(number))) {
+    pendingJump = valid
+    return
   }
+  pendingJump = null
+  container.value?.querySelector<HTMLElement>(`[data-pdf-page="${valid}"]`)?.scrollIntoView({ block: 'start' })
+}
+
+const onPageRendered = async (number: number) => {
+  renderedPages.add(number)
+  await nextTick()
+  if (pendingJump !== null) jumpToPage(pendingJump)
+}
+
+const updateCurrentPage = () => {
+  if (!container.value) return
+  const top = container.value.getBoundingClientRect().top
+  const visible = [...container.value.querySelectorAll<HTMLElement>('[data-pdf-page]')]
+    .find((element) => element.getBoundingClientRect().bottom > top + 40)
+  if (visible) page.value = Number(visible.dataset.pdfPage)
 }
 
 const handleMouseUp = () => {
-  getSelectedText()
+  const selection = window.getSelection()
+  const text = selection?.toString().trim() || ''
+  if (!text) { if (highlights.value.length) clearSelection(); return }
+  if (!container.value?.contains(selection?.anchorNode)) return
+  highlights.value = selectionMarks(selection!, container.value)
+  const pageElement = (selection?.anchorNode instanceof Element
+    ? selection.anchorNode : selection?.anchorNode?.parentElement)?.closest<HTMLElement>('[data-pdf-page]')
+  const selectedPage = Number(pageElement?.dataset.pdfPage || page.value)
+  emit('selection', text, selectedPage)
+  store.commit('setSelectedText', text)
+  store.commit('setTranslatedText', '正在使用本地模型翻译…')
+  const version = ++selectionVersion
+  translating.value = true
+  clearTimeout(translationTimer)
+  translationTimer = setTimeout(async () => {
+    try {
+      const response = await translateText(text)
+      if (version === selectionVersion) store.commit('setTranslatedText', response.data.text)
+    } catch (error: any) {
+      if (version === selectionVersion) store.commit('setTranslatedText', `翻译失败：${error?.message || '本地模型不可用'}`)
+    } finally {
+      if (version === selectionVersion) translating.value = false
+    }
+  }, 250)
 }
 
 onMounted(() => {
-  const div1 = document.getElementById('div1')
-  if (div1) {
-    div1.addEventListener('mouseup', handleMouseUp)
-    div1.addEventListener('wheel', handleWheel, { passive: true })
+  loadPdf()
+  document.addEventListener('selectionchange', updateHighlights)
+  if (container.value) {
+    resizeObserver = new ResizeObserver(([entry]) => {
+      containerWidth.value = entry?.target.clientWidth || 0
+    })
+    resizeObserver.observe(container.value)
+    containerWidth.value = container.value.clientWidth
+    container.value.addEventListener('wheel', handleWheel, { passive: false })
   }
 })
 
 onBeforeUnmount(() => {
-  const div1 = document.getElementById('div1')
-  if (div1) {
-    div1.removeEventListener('mouseup', handleMouseUp)
-    div1.removeEventListener('wheel', handleWheel)
+  cancelAnimationFrame(highlightFrame)
+  document.removeEventListener('selectionchange', updateHighlights)
+  selectionVersion++
+  clearTimeout(translationTimer)
+  resizeObserver?.disconnect()
+  container.value?.removeEventListener('wheel', handleWheel)
+  if (pdfUrl.value) {
+    URL.revokeObjectURL(pdfUrl.value)
   }
 })
 
-const handleButtonLastPage = () => {
-  page.value = Math.max(page.value - 1, 1)
-  y.value = 0
-}
-
-const handleButtonNextPage = () => {
-  page.value = Math.min(page.value + 1, pages.value)
-  y.value = 0
-}
+watch(pages, async (count) => {
+  if (!count) return
+  emit('loaded')
+  await nextTick()
+  jumpToPage(Number(route.query.page) || 1)
+})
+watch(() => route.query.page, async (value) => {
+  if (!pages.value) return
+  await nextTick()
+  jumpToPage(Number(value) || 1)
+})
 </script>
 
 <template>
-  <div class="flex flex-row w-full">
-    <div class="flex items-center justify-center w-full">
-      <Button variant="ghost" @click="handleButtonLastPage">《</Button>
-      <Input class="w-10 h-5 text-sm font-bold" :value="`${page}`" />
-      <Button variant="ghost" @click="handleButtonNextPage">》</Button>
+  <div class="reader">
+    <div class="reader-toolbar">
+      <Button variant="ghost" :disabled="page <= 1" @click="jumpToPage(page - 1)">上一页</Button>
+      <span>第 {{ page }} / {{ pages || '…' }} 页</span>
+      <Button variant="ghost" :disabled="page >= pages" @click="jumpToPage(page + 1)">下一页</Button>
+      <span class="reader-hint">连续滚动阅读 · 选中文字可翻译 · Ctrl＋滚轮缩放</span>
+      <Button v-if="highlights.length" variant="ghost" class="clear-selection" @click="clearSelection">清除标记</Button>
+      <div class="zoom-controls" aria-label="论文缩放" title="在论文区域按 Ctrl＋鼠标滚轮也可缩放">
+        <Button variant="ghost" class="zoom-button" aria-label="缩小论文" title="缩小论文" :disabled="zoom <= minZoom" @click="setZoom(zoom - zoomStep)">−</Button>
+        <span class="zoom-value" aria-live="polite">{{ zoom }}%</span>
+        <Button variant="ghost" class="zoom-button" aria-label="放大论文" title="放大论文" :disabled="zoom >= maxZoom" @click="setZoom(zoom + zoomStep)">+</Button>
+      </div>
+    </div>
+    <div ref="container" class="pdf-container" @scroll.passive="updateCurrentPage" @mouseup="handleMouseUp">
+      <div v-if="pdfError" class="pdf-error" role="alert"><p>{{ pdfError }}</p><Button variant="outline" @click="loadPdf">重新加载论文</Button></div>
+      <div v-for="pageNumber in pages" :key="pageNumber" :data-pdf-page="pageNumber" class="pdf-page" :style="{ width: `${renderedPageWidth}px` }">
+        <VuePDF :pdf="pdf" :page="pageNumber" :width="renderedPageWidth" text-layer @loaded="onPageRendered(pageNumber)" @text-loaded="calibrateTextLayer" />
+        <div class="translation-highlights" aria-hidden="true">
+          <span v-for="(mark, index) in highlights.filter(m => m.page === pageNumber)" :key="index" class="translation-highlight" :style="{ left: `${mark.x * 100}%`, top: `${mark.y * renderedPageWidth}px`, width: `${mark.width * 100}%`, height: `${mark.height * renderedPageWidth}px` }" />
+        </div>
+        <span class="page-label">{{ pageNumber }} / {{ pages }}</span>
+      </div>
     </div>
   </div>
-
-  <div id="div1" ref="container" class="pdf-container">
-    <VuePDF :pdf="pdf" :page="page" text-layer fit-parent />
-    <!-- <div class="flex items-center justify-center mb-10 w-full"></div> -->
-  </div>
-  <FloatingButton
-    :is-visible="isFloatingButtonVisible"
-    :selected-text="selectedText"
-    :knowledge-i-d="knowledgeID"
-    :document-i-d="documentID"
-    :page="page"
-  />
 </template>
 
 <style scoped>
-.pdf-page {
-  width: 100%;
-  margin-bottom: 0; /* Add spacing to avoid overlap */
-}
-
-.pdf-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  overflow-y: auto;
-  overflow-x: auto;
-  max-height: 100vh;
-}
+.reader { display: flex; flex-direction: column; width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; container-type: inline-size; }
+.reader-toolbar { flex: none; display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 44px; padding: 0 12px; border-bottom: 1px solid #e5e7eb; background: #f9fafb; }
+.reader-hint { margin-left: 16px; color: #6b7280; font-size: 12px; }
+.pdf-container { flex: 1; min-height: 0; overflow: auto; padding: 16px 24px 32px; background: #e9edf3; scroll-behavior: smooth; }
+.pdf-error { margin: 40px auto; max-width: 420px; padding: 24px; text-align: center; background: white; border-radius: 12px; color: #475569; }
+.pdf-page { position: relative; margin: 0 auto 16px; background: white; box-shadow: 0 2px 10px #1f29371f; scroll-margin-top: 12px; }
+.translation-highlights { position: absolute; inset: 0; pointer-events: none; z-index: 3; mix-blend-mode: multiply; overflow: hidden; }
+.translation-highlight { position: absolute; background: rgba(255, 235, 0, .45); border-radius: 1px; pointer-events: none; }
+.clear-selection { flex: none; font-size: 12px; }
+.page-label { display: block; padding: 5px; text-align: center; color: #6b7280; font-size: 12px; }
+.zoom-controls { display: flex; align-items: center; flex: none; gap: 2px; margin-left: auto; white-space: nowrap; }
+.zoom-button { width: 28px; height: 28px; padding: 0; font-size: 18px; line-height: 1; }
+.zoom-value { min-width: 44px; text-align: center; color: #374151; font-size: 12px; font-variant-numeric: tabular-nums; }
+@container (max-width: 850px) { .reader-hint { display: none; } }
+@container (max-width: 470px) { .reader-toolbar { gap: 2px; padding: 0 4px; } .reader-toolbar > button { padding: 0 4px; } }
 </style>

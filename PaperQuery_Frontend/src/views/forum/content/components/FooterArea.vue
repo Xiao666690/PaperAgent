@@ -1,7 +1,7 @@
 <!-- 这是底部的输入区域 -->
 <template>
   <div class="flex justify-center p-2">
-    <Label class="text-center shadow">@github/PaperQuery</Label>
+    <Label class="text-center shadow">@github/PaperAgent</Label>
   </div>
   <!-- <div class="flex mb-5 h-10">
     <Textarea placeholder="Type your message here." class="mx-2" />

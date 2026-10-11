@@ -41,6 +41,11 @@ const routes: Array<RouteRecordRaw> = [
         path: 'library',
         component: () => import('@/views/library/library.vue'),
       },
+      {
+        path: 'library/notes',
+        name: 'notesCollection',
+        component: () => import('@/views/library/notesCollection.vue'),
+      },
       // 知识页面
       {
         path: 'knowledge/:knowledgeID',
@@ -52,30 +57,49 @@ const routes: Array<RouteRecordRaw> = [
         name: 'pdfInfo',
         component: pdfInfo,
       },
+      // 笔记全屏编辑：左论文右笔记分栏（与笔记内「全屏编辑」、笔记集卡片共用入口）
+      {
+        path: 'note/fullscreen/:knowledgeID/:documentID',
+        name: 'noteFullscreen',
+        component: () => import('@/views/note/NoteFullscreen.vue'),
+      },
       {
         path: 'Chat',
         component: () => import('@/views/chat/chat.vue'),
       },
       {
+        path: 'research',
+        name: 'research',
+        component: () => import('@/views/research/ResearchView.vue'),
+      },
+      // 团队管理：仅 admin 可进入（路由守卫见 router/index.ts）
+      {
+        path: 'team',
+        name: 'team',
+        component: () => import('@/views/team/TeamView.vue'),
+        meta: { requiresAuth: true, role: 'admin' },
+      },
+      {
         path: 'Note',
         component: () => import('@/views/note/note.vue'),
       },
-      {
-        path: 'Forum',
-        name: 'forum',
-        component: () => import('@/views/forum/forum.vue'),
-        children: [
-          {
-            path: 'threadDetail/:postid',
-            name: 'threadDetail',
-            component: () => import('@/views/forum/components/threadDetail.vue'),
-          },
-          {
-            path: 'threads',
-            component: () => import('@/views/forum/components/threads.vue'),
-          }
-        ],
-      }
+      // 论坛模块已隐藏 - 恢复时取消此注释即可
+      // {
+      //   path: 'Forum',
+      //   name: 'forum',
+      //   component: () => import('@/views/forum/forum.vue'),
+      //   children: [
+      //     {
+      //       path: 'threadDetail/:postid',
+      //       name: 'threadDetail',
+      //       component: () => import('@/views/forum/components/threadDetail.vue'),
+      //     },
+      //     {
+      //       path: 'threads',
+      //       component: () => import('@/views/forum/components/threads.vue'),
+      //     }
+      //   ],
+      // }
     ],
   },
   // 知识页面

@@ -18,6 +18,12 @@ def get_document_by_uid_kid(db: Session, uid: str,knowledgeID:str):
 def get_document_status_equal_zero(db: Session):
     return db.query(Document).filter(Document.documentStatus == 0).first()
 
+def reset_stuck_documents(db: Session):
+    """将处理中(状态1)的文档重置为排队(状态0)，用于 worker 启动时清理因进程中断而残留的文档"""
+    db.query(Document).filter(Document.documentStatus == 1).update({Document.documentStatus: 0})
+    db.commit()
+    return 1
+
 def update_document_status(db: Session,document: Document):
     db.query(Document).filter(Document.uid == document.uid).update({Document.documentStatus: document.documentStatus})
     db.commit()

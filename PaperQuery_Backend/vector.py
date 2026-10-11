@@ -1,4 +1,9 @@
 import time
+import traceback
+import sys
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 import dotenv
 dotenv.load_dotenv()
@@ -11,6 +16,7 @@ from core.backend.crud.crud_document import (
     get_document_status_equal_zero,
     update_document_content,
     update_document_status,
+    reset_stuck_documents,
 )
 from core.backend.crud.crud_knowledge import update_knowledge_content
 from core.backend.db.database import SessionLocal
@@ -51,6 +57,8 @@ if __name__ == '__main__':
     chroma_db=AcadeChroma(os.getenv("CHROMA_LAYER1_DIR"),os.getenv("CHROMA_LAYER2_DIR"),ONNXEmbeddings(),llm)
     dp=DataProcessAgent(llm,chroma_db)
     db = SessionLocal()
+    # 启动时清理残留的"处理中"文档，避免进程中断后状态卡在 1 导致永不重试
+    reset_stuck_documents(db)
     while True:
         document=get_document_status_equal_zero(db)
         time.sleep(3)
@@ -65,6 +73,7 @@ if __name__ == '__main__':
                 result=dp.add_newpaper(os.getenv("AcadeAgent_DIR")+document.documentPath,document.knowledgeID)
             except Exception as e:
                 print(Fore.RED, f"文档处理失败，已回滚为排队状态: {e}", Style.RESET_ALL)
+                traceback.print_exc()
                 document.documentStatus=0
                 update_document_status(db,document)
                 time.sleep(10)

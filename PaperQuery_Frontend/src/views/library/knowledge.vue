@@ -2,7 +2,7 @@
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { computed, ref } from 'vue'
-import { ElNotification } from 'element-plus'
+import { ElMessageBox, ElNotification } from 'element-plus'
 import { formatName } from '@/components/utils'
 import { Label } from '@/components/ui/label'
 import { useRouter } from 'vue-router'
@@ -11,8 +11,10 @@ import {
   uploadDocument,
   getDocumentInfo,
   deleteDocument,
+  renameDocument,
 } from '@/api/data'
 import { useRoute } from 'vue-router'
+import { useDocumentListStore } from '@/stores/documentList'
 import { type Document } from '@/types/type'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
@@ -25,6 +27,44 @@ import { ChevronsUpDown } from 'lucide-vue-next'
 import moment from 'moment'
 
 const search = ref('')
+const renameTarget = ref<Document | null>(null)
+const renameName = ref('')
+const renameOpen = ref(false)
+const renaming = ref(false)
+const renameError = ref('')
+const renameInput = ref<{ focus: () => void } | null>(null)
+const openRename = (row: Document) => {
+  renameTarget.value = row
+  renameName.value = row.documentName
+  renameError.value = ''
+  renameOpen.value = true
+}
+const saveRename = async () => {
+  if (renaming.value || !renameTarget.value) return
+  const name = renameName.value.trim()
+  if (!name || [...name].length > 255 || /[\u0000-\u001f]/.test(name)) {
+    renameError.value = '请输入 1–255 个字符的论文名称，不要包含换行'
+    return
+  }
+  renaming.value = true
+  renameError.value = ''
+  try {
+    const target = renameTarget.value
+    const response = await renameDocument(knowledgeID, target.documentID, name)
+    if (response.status_code !== 200) throw new Error(response.msg || '重命名失败')
+    const savedName = response.data.documentName
+    const row = tableData.value.find(item => item.documentID === target.documentID)
+    if (row) row.documentName = savedName
+    useDocumentListStore().renameDocument(target.documentID, knowledgeID, savedName)
+    renameOpen.value = false
+    ElNotification({ title: '重命名成功', message: '论文名称已保存', type: 'success' })
+  } catch (error: any) {
+    renameError.value = error.message || '保存失败，请重试'
+  } finally { renaming.value = false }
+}
+const onRenameEnter = (event: KeyboardEvent) => {
+  if (!event.isComposing && event.keyCode !== 229) { event.preventDefault(); saveRename() }
+}
 
 const router = useRouter()
 
@@ -74,7 +114,7 @@ const filterTableData = computed(() =>
   tableData.value.filter((data) => {
     const searchValue = search.value.toLowerCase()
     const nameMatches = data.documentName.toLowerCase().includes(searchValue)
-    const tagMatches = data.documentTags.some(
+    const tagMatches = (data.documentTags || []).some(
       (tag) => tag && tag.toLowerCase().includes(searchValue.toLowerCase()),
     )
     return !search.value || nameMatches || tagMatches
@@ -87,9 +127,7 @@ const filterTableData = computed(() =>
 
 const handleView = async (index: number, row: Document) => {
   // 在这里实现跳转到显示对应pdf的页面
-  console.log(index, row)
   if (row) {
-    console.log(row.documentName)
     // 向后端发送请求,获取对应的pdf文件
     router.push({
       name: 'pdfInfo',
@@ -103,6 +141,7 @@ const handleView = async (index: number, row: Document) => {
 // 删除文档 处理函数
 const handleDelete = async (index: number, row: Document) => {
   try {
+    await ElMessageBox.confirm(`确认删除 ${row.documentName}？该论文及笔记将从论文库移除。`, '删除论文', { type: 'warning' })
     const resp = await deleteDocument(knowledgeID, row.documentID)
     if (resp) {
       ElNotification({
@@ -111,10 +150,12 @@ const handleDelete = async (index: number, row: Document) => {
         type: 'success',
       })
       // 删除该行数据
-      tableData.value.splice(index, 1)
-      console.log(index)
+      tableData.value = tableData.value.filter(item => item.documentID !== row.documentID)
+      // 同步移除对话页已绑定的该文档，避免残留 ID 仍在 Chat 会话中显示
+      useDocumentListStore().deleteDocumentById(row.documentID)
     }
   } catch (error: any) {
+    if (error === 'cancel' || error === 'close') return
     ElNotification({
       title: 'Error',
       message: `文件删除失败：${error.message}`,
@@ -149,6 +190,7 @@ const handleFileUpload = async (event: Event) => {
     progress.value = 0
     uploadTaskStatus.value = true
     await processQueue(knowledgeID)
+    target.value = ''
     // 关闭进度条显示
     uploadTaskStatus.value = false
     if (processingDocList.value.length === 0) {
@@ -194,6 +236,10 @@ const processQueue = async (knowledgeID: string) => {
       }
     } catch (error: any) {
       console.error(`文件上传失败：${error.message}`)
+      ElNotification.error({
+        title: '上传失败',
+        message: error.message || '文件上传失败，请重试',
+      })
     } finally {
       await new Promise((resolve) => setTimeout(resolve, 1000))
       uploadTaskQueue.value.shift()
@@ -230,6 +276,7 @@ const checkDocumentStatus = async () => {
           }
         }
       } catch (error: any) {
+        processDone = false
         ElNotification({
           title: 'Error',
           message: `获取文档状态失败：${error.message}`,
@@ -273,10 +320,7 @@ const formatterName = (row: Document) => {
   // 定义超过 5 个字符显示省略号
   const maxLength = 20
   // 去除文件名后缀
-  return formatName(
-    row['documentName'].slice(0, row['documentName'].indexOf('.pdf')),
-    maxLength,
-  )
+  return formatName(row.documentName.replace(/\.pdf$/i, ''), maxLength)
 }
 
 const formatterTime = (row: Document) => {
@@ -284,11 +328,9 @@ const formatterTime = (row: Document) => {
   if (!row || !row.createTime) {
     return ''
   }
-  if (row.createTime.toString().length === 10) {
-    row.createTime *= 1000
-  }
+  const timestamp = row.createTime.toString().length === 10 ? Number(row.createTime) * 1000 : row.createTime
   const now = moment()
-  const inputTime = moment(row.createTime)
+  const inputTime = moment(timestamp)
   const diffInHours = now.diff(inputTime, 'hours')
 
   if (diffInHours < 1) {
@@ -311,11 +353,11 @@ const isOpen = ref(true)
 </script>
 
 <template>
-  <div class="flex-col w-full p-8">
-    <h1 class="text-2xl font-bold mb-8">knowledge Documents</h1>
-    <div class="flex-col mb-6">
-      <div class="flex space-x-4 mb-6 w-full">
-        <Input v-model="search" type="text" placeholder="搜索" class="w-1/2" />
+  <div class="document-list-page pa-page w-full p-6">
+    <div class="pa-page-heading mb-5"><h1 class="text-2xl font-bold">论文文档</h1><p class="pa-page-intro">上传、整理与研读，在同一处管理你的研究证据。</p></div>
+    <div class="flex-col">
+      <div class="flex gap-3 mb-4 w-full">
+        <Input v-model="search" type="text" placeholder="搜索论文名称或标签" class="w-full max-w-xl" />
         <input
           ref="fileInput"
           type="file"
@@ -333,29 +375,32 @@ const isOpen = ref(true)
           上传文件
         </Button>
       </div>
-      <el-table :data="filterTableData" class="w-full" max-height="500">
+      <el-table :data="filterTableData" class="document-table w-full" max-height="calc(100vh - 190px)">
         <el-table-column
           fixed
-          :formatter="formatterName"
-          label="Document Name"
+          min-width="340"
+          show-overflow-tooltip
+          label="论文名称"
           prop="documentName"
         />
-        <el-table-column label="Tag" prop="documentTags">
+        <el-table-column label="标签" prop="documentTags" width="160">
           <template #default="{ row }">
-            <div>
+            <div class="document-tags" :title="(row.documentTags || []).join('、')">
               <el-tag
-                v-for="(tag, index) in row.documentTags"
+                v-for="(tag, index) in (row.documentTags || []).slice(0, 3)"
                 :key="index"
                 :type="getTagType(index)"
-                style="margin-right: 4px"
+                size="small"
               >
-                <!-- 如果tag 是空不显示 -->
                 {{ tag }}
+              </el-tag>
+              <el-tag v-if="(row.documentTags || []).length > 3" size="small" type="info">
+                +{{ row.documentTags.length - 3 }}
               </el-tag>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="Status" prop="documentStatus">
+        <el-table-column label="状态" prop="documentStatus" width="90">
           <template #default="{ row }">
             <div>
               <el-tag
@@ -379,13 +424,14 @@ const isOpen = ref(true)
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="Vector Number" prop="vectorNum" />
+        <el-table-column label="索引块数" prop="vectorNum" width="95" />
         <el-table-column
-          label="Create Time"
+          width="150"
+          label="创建时间"
           prop="createTime"
           :formatter="formatterTime"
         />
-        <el-table-column align="right">
+        <el-table-column align="right" width="260" label="操作">
           <template #default="scope: { $index: number; row: Document }">
             <el-button
               class="text-sm"
@@ -396,8 +442,9 @@ const isOpen = ref(true)
               "
               @click="handleView(scope.$index, scope.row)"
             >
-              View
+              阅读
             </el-button>
+            <el-button class="text-sm" :aria-label="`重命名 ${scope.row.documentName}`" @click="openRename(scope.row)">重命名</el-button>
             <el-button
               class="text-sm"
               :disabled="
@@ -407,15 +454,23 @@ const isOpen = ref(true)
               "
               @click="handleDelete(scope.$index, scope.row)"
             >
-              Delete
+              删除
             </el-button>
           </template>
         </el-table-column>
       </el-table>
-      <div class="flex justify-center p-2">
-        <Label class="text-center color-gray">@github/paperQuery</Label>
-      </div>
     </div>
+    <el-dialog v-model="renameOpen" title="重命名论文" width="min(480px, 92vw)" append-to-body :close-on-click-modal="!renaming" :close-on-press-escape="!renaming" :show-close="!renaming" @opened="renameInput?.focus()">
+      <p class="mb-4 text-sm text-slate-500">用研究方向或论文主题命名，例如：时间序列预测 · 多变量建模</p>
+      <label for="paper-rename-input" class="block mb-2 font-medium">论文名称</label>
+      <el-input id="paper-rename-input" ref="renameInput" v-model="renameName" :disabled="renaming" maxlength="255" show-word-limit placeholder="输入便于识别的论文名称" :aria-invalid="!!renameError" aria-describedby="paper-rename-error" @keydown.enter="onRenameEnter" />
+      <p id="paper-rename-error" class="mt-2 text-sm text-red-600" role="alert">{{ renameError }}</p>
+      <p class="mt-3 text-xs text-slate-500">名称会保存到论文库，不影响 PDF 原文、笔记及检索索引</p>
+      <template #footer>
+        <el-button :disabled="renaming" @click="renameOpen = false">取消</el-button>
+        <el-button type="primary" :loading="renaming" :disabled="!renameName.trim()" @click="saveRename">保存名称</el-button>
+      </template>
+    </el-dialog>
     <transition name="slide">
       <el-card v-show="uploadTaskStatus" class="fixed-card w-1/4">
         <Progress v-model="progress" class="w-full" />
@@ -459,6 +514,12 @@ const isOpen = ref(true)
 </template>
 
 <style scoped>
+.document-list-page { min-width: 0; }
+.document-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; }
+.document-tags .el-tag { max-width: 100%; min-width: 0; height: auto; padding: 3px 6px; }
+.document-tags :deep(.el-tag__content) { min-width: 0; white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
+.document-table :deep(.el-table__cell) { padding: 7px 0; }
+.document-table :deep(.el-table__cell .cell) { line-height: 1.35; }
 /* 添加所需的自定义样式 */
 .ellipsis {
   white-space: nowrap;
@@ -475,7 +536,7 @@ const isOpen = ref(true)
 
 .slide-enter-active,
 .slide-leave-active {
-  transition: transform 0.5s;
+  transition: transform 240ms var(--ease-out);
 }
 .slide-enter-from,
 .slide-leave-to {

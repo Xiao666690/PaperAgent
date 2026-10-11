@@ -53,3 +53,20 @@ PaperQuery_Frontend/res/tmp/*
 Thumbs.db
 .vscode/
 .idea/
+
+# Account and local runtime data (all source copies)
+**/res/**
+**/.pip_cache/
+**/.pytest_cache/
+**/competition_eval/raw/
+**/competition_eval/reports/
+**/competition_eval/metrics/
+**/competition_eval/evaluation_v2/
+**/competition_eval/datasets/corpus/
+**/eval/results/
+**/None
+*.sqlite
+*.sqlite3
+*.db
+
+**/.npm_cache/

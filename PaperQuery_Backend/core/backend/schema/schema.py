@@ -29,6 +29,12 @@ class KnowledgeCreate(BaseModel):
 class KnowledgeUpdate(KnowledgeCreate):
     documentNum: int | None = None
     vectorNum: int | None = None
+
+
+class KnowledgeEdit(BaseModel):
+    knowledgeID: str
+    knowledgeName: str
+    knowledgeDescription: str | None = None
 # 用户所有知识描述
 
 # 知识获取
@@ -43,6 +49,29 @@ class KnowledgeQuery(Response):
 class LoginRequest(BaseModel):
     username: str
     password: str
+
+# 注册请求：团队名为可选字段，填了=提交加入申请（团队名=管理员名字，待管理员审批）
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+    team_name: str = ''   # 可选；填了即提交加入该团队的申请
+
+# 审批通过加入申请（管理员操作）
+class TeamApproveRequest(BaseModel):
+    username: str
+
+# 拒绝加入申请（管理员操作）
+class TeamRejectRequest(BaseModel):
+    username: str
+
+# 删除成员（管理员操作）
+class TeamRemoveRequest(BaseModel):
+    username: str
+
+
+class TeamRenameRequest(BaseModel):
+    team_name: str
+
 # 文件Document创建
 class DocumentCreate(BaseModel):
     uid : str 

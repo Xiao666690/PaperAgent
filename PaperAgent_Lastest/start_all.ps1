@@ -75,7 +75,7 @@ if (Test-PortInUse 8080) {
 
 Write-Host ""
 Write-Host "已启动完成：" -ForegroundColor Green
-Write-Host "  前端页面   http://127.0.0.1:8080" -ForegroundColor White
+Write-Host "  前端页面   http://127.0.0.1:8080  （账号 admin / 123456）" -ForegroundColor White
 Write-Host "  后端 API   http://127.0.0.1:8001" -ForegroundColor White
 Write-Host ""
 Write-Host "提示：" -ForegroundColor Yellow

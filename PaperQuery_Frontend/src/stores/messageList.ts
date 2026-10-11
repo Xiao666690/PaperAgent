@@ -1,10 +1,13 @@
 import { computed, reactive } from 'vue'
 import { defineStore } from 'pinia'
-import { getAnswerStream, updateMemory } from '@/api/chat'
+import { updateMemory } from '@/api/chat'
+import { askQuestionStream, type CitationItem, type ExternalPaperResult, type SearchProgress } from '@/api/qa'
 import { useChatHistoryStore } from './chatHistory'
+import type { ChatDocumentSnapshot } from './chatHistory'
 import { useDocumentListStore } from './documentList'
 import { useMemoryStore } from './memory'
 import { useModelStore } from './modelStore'
+import { notifyTaskCompletion } from '@/services/taskCompletion'
 
 export type Message = {
   id?: number
@@ -13,6 +16,15 @@ export type Message = {
   model?: string
   modelLabel?: string
   createdAt?: number
+  thinkingMs?: number
+  durationMs?: number
+  citations?: CitationItem[]
+  externalPapers?: ExternalPaperResult
+  searchStatus?: string
+  searchState?: SearchProgress['state']
+  searchSteps?: string[]
+  status?: 'thinking' | 'streaming' | 'done' | 'error' | 'stopped'
+  documents?: ChatDocumentSnapshot[]
 }
 
 export const useMessageListStore = defineStore('messageList', () => {
@@ -21,16 +33,24 @@ export const useMessageListStore = defineStore('messageList', () => {
   })
 
   const messages = computed(() => state.messageList)
+  const pendingRequests = new Set<{ messages: Message[]; stop: () => void }>()
+  function stopCurrentAnswer() {
+    for (const request of pendingRequests) {
+      if (request.messages === state.messageList) request.stop()
+    }
+  }
 
   function addUserMessage(message: Message) {
+    const documentStore = useDocumentListStore()
     const userMessage: Message = {
       ...message,
+      documents: documentStore.getSelectedSnapshots(),
       id: state.messageList.length,
       createdAt: Date.now(),
     }
     state.messageList.push(userMessage)
     saveHistorySnapshot()
-    addGptMessage(userMessage.content)
+    addGptMessage(userMessage.content, documentStore.getDocumentIDs())
   }
 
   function addSystemMessage(content: string) {
@@ -43,55 +63,138 @@ export const useMessageListStore = defineStore('messageList', () => {
     saveHistorySnapshot()
   }
 
-  function addGptMessage(question: string) {
+  function addGptMessage(question: string, ids: string[]) {
+    const requestToken = localStorage.getItem('token')
+    const requestMessages = state.messageList
+    const history = useChatHistoryStore()
+    const sessionId = history.state.currentSessionId
+    const documents = useDocumentListStore().getDocumentSnapshots()
+    const selectedDocumentIDs = [...ids]
     const modelStore = useModelStore()
     const model = modelStore.currentModel
     const modelLabel = modelStore.getModelLabel(model)
     const newId = state.messageList.length
-    const ids = useDocumentListStore().getDocumentIDs() as Array<string>
     const memory = useMemoryStore().getMemory
     let answer = ''
+    let citations: CitationItem[] = []
+    const controller = new AbortController()
+
+    requestMessages.push({
+      id: newId,
+      content: '',
+      role: 'gpt',
+      documents,
+      model,
+      modelLabel,
+      createdAt: Date.now(),
+      status: 'thinking',
+    })
 
     function updateMessage(id: number, content: string) {
-      if (!state.messageList[id]) {
-        state.messageList.push({
+      if (controller.signal.aborted) return
+      if (requestToken !== localStorage.getItem('token')) return
+      if (!requestMessages[id]) {
+        requestMessages.push({
           id,
           content,
           role: 'gpt',
           model,
           modelLabel,
           createdAt: Date.now(),
+          status: 'streaming',
         })
       } else {
-        state.messageList[id].content += content
+        if (requestMessages[id].thinkingMs == null) {
+          requestMessages[id].thinkingMs = Date.now() - (requestMessages[id].createdAt || Date.now())
+        }
+        requestMessages[id].content += content
+        requestMessages[id].status = 'streaming'
       }
     }
 
-    getAnswerStream(question, memory, ids, model)
-      .then((stream) => {
-        if (!stream) {
-          throw new Error('Stream is undefined.')
-        }
-        const reader = stream.getReader()
-        reader.read().then(function processText({ done, value }) {
-          if (done) {
-            updateMemory(question, memory, answer).then((data: any) => {
-              if (data?.context) {
-                useMemoryStore().setMemory(data.context)
-              }
-              saveHistorySnapshot()
-            })
-            return
+    function saveRequestHistory(context = memory) {
+      if (requestToken !== localStorage.getItem('token')) return
+      history.saveSnapshot({
+        title: requestMessages.find(message => message.role === 'user')?.content.slice(0, 24) || '新聊天',
+        model, modelLabel, memory: context, summary: context, documents, selectedDocumentIDs,
+        messages: requestMessages.filter(message => message.role === 'user' || message.role === 'gpt'),
+      }, sessionId)
+    }
+
+    const request = { messages: requestMessages, stop: () => {
+      controller.abort()
+      const reply = requestMessages[newId]
+      if (reply) {
+        reply.status = 'stopped'
+        reply.citations = citations
+        reply.durationMs = Date.now() - (reply.createdAt || Date.now())
+      }
+      saveRequestHistory()
+      pendingRequests.delete(request)
+    } }
+    pendingRequests.add(request)
+    askQuestionStream(
+      question,
+      ids,
+      model,
+      memory,
+      (text) => {
+        answer += text
+        updateMessage(newId, text)
+      },
+      (cits) => {
+        citations = cits
+      },
+      (progress) => {
+        if (requestToken === localStorage.getItem('token') && requestMessages[newId]) {
+          const message = requestMessages[newId]
+          message.searchStatus = progress.text
+          message.searchState = progress.state
+          if (progress.text && !message.searchSteps?.includes(progress.text)) {
+            message.searchSteps = [...(message.searchSteps || []), progress.text]
           }
-          updateMessage(newId, value)
-          answer += value
-          reader.read().then(processText)
-        })
+        }
+      },
+      (result) => {
+        if (requestToken === localStorage.getItem('token') && requestMessages[newId]) {
+          requestMessages[newId].externalPapers = result
+        }
+        saveRequestHistory()
+      },
+      controller.signal,
+    )
+      .then(() => {
+        if (controller.signal.aborted) return
+        if (requestToken !== localStorage.getItem('token')) return
+        if (requestMessages[newId]) {
+          requestMessages[newId].citations = citations
+          requestMessages[newId].status = 'done'
+          requestMessages[newId].durationMs = Date.now() - (requestMessages[newId].createdAt || Date.now())
+        }
+        saveRequestHistory()
+        notifyTaskCompletion('智能问答已完成', question, `/home/Chat?session=${encodeURIComponent(sessionId)}`, requestToken, history.state.currentSessionId !== sessionId)
+        return updateMemory(question, memory, answer).catch(error => { console.error('更新对话记忆失败', error) })
+      })
+      .then((data: any) => {
+        if (controller.signal.aborted) return
+        if (requestToken !== localStorage.getItem('token')) return
+        if (data?.context && history.state.currentSessionId === sessionId) {
+          useMemoryStore().setMemory(data.context)
+        }
+        saveRequestHistory(data?.context || memory)
       })
       .catch((error) => {
+        if (controller.signal.aborted) return
         console.error(error)
-        addSystemMessage(`模型调用失败：${error?.message || error}`)
+        if (requestToken !== localStorage.getItem('token')) return
+        if (requestMessages[newId]) {
+          requestMessages[newId].status = 'error'
+          requestMessages[newId].durationMs ??= Date.now() - (requestMessages[newId].createdAt || Date.now())
+        }
+        requestMessages.push({ role: 'system', content: `模型调用失败：${error?.message || error}` })
+        saveRequestHistory()
       })
+      .finally(() => pendingRequests.delete(request))
   }
 
   function compressContextForModelSwitch(fromModel: string, toModel: string) {
@@ -122,11 +225,12 @@ export const useMessageListStore = defineStore('messageList', () => {
   function clearMessages() {
     state.messageList = []
     useMemoryStore().clearMemory()
+    useDocumentListStore().clearDocuments()
     useChatHistoryStore().startNewSession()
   }
 
   function restoreMessages(messagesToRestore: Message[], memory = '') {
-    state.messageList = messagesToRestore.map((message, index) => ({
+    state.messageList = messagesToRestore.filter(message => message.role === 'user' || message.role === 'gpt').map((message, index) => ({
       ...message,
       id: index,
     }))
@@ -141,8 +245,10 @@ export const useMessageListStore = defineStore('messageList', () => {
       model: modelStore.currentModel,
       modelLabel: modelStore.getModelLabel(modelStore.currentModel),
       memory: useMemoryStore().getMemory,
+      summary: useMemoryStore().getMemory,
       documents: useDocumentListStore().getDocumentSnapshots(),
-      messages: state.messageList,
+      selectedDocumentIDs: useDocumentListStore().getDocumentIDs(),
+      messages: state.messageList.filter(message => message.role === 'user' || message.role === 'gpt'),
     })
   }
 
@@ -155,5 +261,6 @@ export const useMessageListStore = defineStore('messageList', () => {
     restoreMessages,
     compressContextForModelSwitch,
     saveHistorySnapshot,
+    stopCurrentAnswer,
   }
 })

@@ -1,6 +1,8 @@
 import json
 
 from langchain_openai import ChatOpenAI
+from langchain_core.messages import SystemMessage, HumanMessage
+from core.decision.prompts import ASSISTANT_SYSTEM_PROMPT
 
 from core.backend.utils.utils import clean_markdown_json_blocks
 from core.llm.myprompts import *
@@ -79,6 +81,6 @@ class ChatAgent:
         return response.content
 
     def chat_simple(self,prompt):
-        return self.streamllm.stream(prompt)
+        return self.streamllm.stream([SystemMessage(content=ASSISTANT_SYSTEM_PROMPT), HumanMessage(content=prompt)])
     def get_llm(self):
         return self.llm

@@ -13,6 +13,7 @@ class PaperSearchInput(BaseModel):
     keywords: list[str] = Field(default_factory=list)
     max_results: int = 10
     recent: bool = False
+    computer_science: bool = False
 
 
 class PaperSearchSkill(BaseSkill):
@@ -40,12 +41,16 @@ class PaperSearchSkill(BaseSkill):
         provider = "arxiv"
         warning = None
         try:
-            raw_papers = client.fetch_results(data.keywords, fetch_params)
+            search_terms = data.keywords
+            if data.computer_science:
+                terms = ' OR '.join('all:"' + term.replace('"', '').replace('\\', '') + '"' for term in data.keywords)
+                search_terms = [f'({terms}) AND (cat:cs.* OR cat:stat.ML)']
+            raw_papers = client.fetch_results(search_terms, fetch_params)
         except Exception as e:
             warning = f"arXiv 暂时不可用，已切换 OpenAlex: {e}"
             provider = "openalex"
             try:
-                papers = self._search_openalex(data.keywords, data.max_results, recent=data.recent)
+                papers = self._search_openalex(data.keywords, data.max_results, recent=data.recent, computer_science=data.computer_science)
             except Exception as fallback_error:
                 return SkillResult(
                     ok=False,
@@ -74,7 +79,7 @@ class PaperSearchSkill(BaseSkill):
                 provider = "openalex"
                 warning = "arXiv 未找到匹配论文，已切换 OpenAlex"
                 try:
-                    papers = self._search_openalex(data.keywords, data.max_results, recent=data.recent)
+                    papers = self._search_openalex(data.keywords, data.max_results, recent=data.recent, computer_science=data.computer_science)
                 except Exception as fallback_error:
                     return SkillResult(
                         ok=False,
@@ -82,6 +87,9 @@ class PaperSearchSkill(BaseSkill):
                         error_message=f"arXiv 无结果；OpenAlex: {fallback_error}",
                     )
 
+        if data.computer_science:
+            from core.decision.external_search import filter_computer_papers
+            papers = filter_computer_papers(papers, data.keywords)
         artifact = {
             "type": "paper_list",
             "title": ", ".join(data.keywords),
@@ -94,7 +102,7 @@ class PaperSearchSkill(BaseSkill):
         return SkillResult(ok=True, output=output, artifacts=[artifact])
 
     @staticmethod
-    def _search_openalex(keywords: list[str], max_results: int, recent: bool = False) -> list[dict]:
+    def _search_openalex(keywords: list[str], max_results: int, recent: bool = False, computer_science: bool = False) -> list[dict]:
         """arXiv 限流时使用 OpenAlex 的公开论文元数据作为只读备用源。"""
         import requests
 
@@ -102,9 +110,12 @@ class PaperSearchSkill(BaseSkill):
             "search": " ".join(keywords),
             "per-page": max(1, min(max_results, 20)),
         }
+        if computer_science:
+            params['filter'] = 'topics.field.id:17'
+            params['search'] = ' OR '.join('"' + term.replace('"', '') + '"' for term in keywords)
         if recent:
             today = date.today()
-            params["filter"] = (
+            params["filter"] = (params.get('filter', '') + ',' if params.get('filter') else '') + (
                 f"from_publication_date:{(today - timedelta(days=365)).isoformat()},"
                 f"to_publication_date:{today.isoformat()}"
             )
@@ -144,6 +155,7 @@ class PaperSearchSkill(BaseSkill):
                 "provider": "openalex",
                 "venue": source.get("display_name") or "来源未注明",
                 "source_type": source.get("type") or "unknown",
+                "fields": [t.get('field', {}).get('id', '') for t in work.get('topics', [])],
             })
         if not papers:
             raise RuntimeError("OpenAlex 未返回匹配论文")

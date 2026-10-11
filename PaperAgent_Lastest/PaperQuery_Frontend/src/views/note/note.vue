@@ -8,9 +8,10 @@
       <div class="actions-right">
         <button v-if="!hideFullscreen" type="button" title="进入左论文右笔记的全屏编辑页" @click="goFullscreen">全屏编辑</button>
         <button type="button" @click="exportNote">导出 Markdown</button>
-        <button type="button" class="primary" :disabled="saving" @click="saveNote(true)">保存</button>
+        <button type="button" class="primary" :disabled="saving" @click="saveNote(true)">{{ saving ? '保存中…' : '保存' }}</button>
       </div>
     </div>
+    <p class="note-save-status" role="status" aria-live="polite">{{ status }}</p>
     <input ref="fileInput" type="file" accept=".md,.markdown,text/markdown,text/plain" hidden @change="importMarkdown" />
     <div :id="editorId" class="note-editor" ref="noteEditorRef"></div>
   </div>
@@ -26,15 +27,15 @@
   height: 30px; padding: 0 14px; font-size: 12px; line-height: 1; white-space: nowrap;
   background: #ffffff;             /* 白底 */
   color: #1f1f1f;                  /* 黑字 */
-  border: 1px solid #d0d0d8;       /* 细浅灰描边，白底不显得空 */
+  border: 1px solid #d0d4d8;       /* 细浅灰描边，白底不显得空 */
   border-radius: 8px; cursor: pointer;
   transition: background .12s ease, color .12s ease, transform .12s ease, box-shadow .12s ease;
 }
 .note-actions button:hover { background: #f5f5f9; } /* hover 略灰 */
 .note-actions button:active { transform: scale(.96); box-shadow: 0 2px 8px rgba(31,31,31,.22); } /* 点击外阴影按压 */
 .note-actions button:disabled { opacity: .5; cursor: not-allowed; }
-.note-actions .primary { background: #6d5bd0; color: #fff; }
-.note-actions .primary:hover { background: #5a4bbd; }
+.note-actions .primary { background: #5b97d0; color: #fff; }
+.note-actions .primary:hover { background: #4b86bd; }
 .note-editor { position: relative; flex: 1; min-height: 0; overflow: auto; }
 /* 滚动反馈：可滚动时在编辑区顶部/底部显示渐隐阴影，指示滚动方向 */
 .note-editor :deep(.vditor-content) { position: relative; scroll-behavior: smooth; }
@@ -161,6 +162,7 @@ onMounted(() => {
   editor.value = new Vditor(editorId, {
     height: '100%', width: '100%', mode: 'ir',
     lang: 'zh_CN',
+    cdn: `${import.meta.env.BASE_URL}vendor/vditor`,
     toolbarConfig: { pin: true },
     counter: { enable: true, type: 'markdown' },
     toolbar: [

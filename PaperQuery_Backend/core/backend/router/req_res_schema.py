@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class LoginException(HTTPException):
@@ -17,12 +17,16 @@ class Chat_Request(BaseModel):
     question: str
     ref: Ref
     context: str
-    model: str = "deepseek"  # 可选: deepseek, kimi, openai
+    model: str = "deepseek"  # 可选: deepseek, kimi, zhipu
 
 
 class DeleteDocument(BaseModel):
     documentID: str
     knowledgeID: str
+
+
+class DeleteKnowledge(BaseModel):
+    knowledgeIDs: list[str]
 
 
 class TranslateRequest(BaseModel):
@@ -37,4 +41,13 @@ class TMP_Chat_Request(BaseModel):
     question: str
     context: str
     uid: list
-    model: str = "deepseek"  # 可选: deepseek, kimi, openai
+    model: str = "deepseek"  # 可选: deepseek, kimi, zhipu
+
+
+# V2 Ask Mode 请求
+class QARequest(BaseModel):
+    question: str
+    document_ids: list[str] = Field(default_factory=list)
+    model: str = "deepseek"
+    mode: str = "ask"  # ask / research / experiment
+    conversation_context: str = ""
