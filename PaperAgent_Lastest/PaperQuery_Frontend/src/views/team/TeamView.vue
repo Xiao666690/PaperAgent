@@ -1,6 +1,6 @@
 <template>
-  <div class="flex-col w-full p-8">
-    <div class="flex items-center justify-between mb-8">
+  <div class="team-page pa-page flex-col w-full p-8">
+    <div class="pa-page-heading flex items-center justify-between mb-8">
       <h1 class="text-2xl font-bold">管理团队</h1>
       <p class="text-sm text-gray-500">团队成员共享同一知识库与对话</p>
     </div>
@@ -18,7 +18,7 @@
               v-model="draftTeamName"
               aria-label="新团队名称"
               maxlength="50"
-              class="h-9 min-w-48 rounded-md border border-gray-300 bg-white px-3 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
+              class="h-9 min-w-48 rounded-md border border-gray-300 bg-white px-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               :disabled="savingName"
               @keyup.enter="saveTeamName"
               @keyup.esc="cancelRename"
@@ -104,12 +104,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/api/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-
-const base = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001'
 
 interface Member {
   username: string
@@ -134,8 +132,6 @@ const renaming = ref(false)
 const draftTeamName = ref('')
 const savingName = ref(false)
 
-const authHeader = () => ({ Authorization: `Bearer ${localStorage.getItem('token') || ''}` })
-
 const startRename = () => {
   draftTeamName.value = teamInfo.value?.team_name || ''
   renaming.value = true
@@ -158,7 +154,7 @@ const saveTeamName = async () => {
   }
   savingName.value = true
   try {
-    const { data } = await axios.post(`${base}/team/rename`, { team_name: name }, { headers: authHeader(), timeout: 10000 })
+    const { data } = await api.post('/team/rename', { team_name: name })
     if (teamInfo.value) teamInfo.value.team_name = data.data.team_name
     ElMessage.success('团队名称已更新')
     cancelRename()
@@ -171,7 +167,7 @@ const saveTeamName = async () => {
 
 const loadTeam = async () => {
   try {
-    const { data } = await axios.get(`${base}/team/info`, { headers: authHeader(), timeout: 10000 })
+    const { data } = await api.get('/team/info')
     if (data?.data) {
       teamInfo.value = data.data
       members.value = data.data.members || []
@@ -183,7 +179,7 @@ const loadTeam = async () => {
 
 const loadRequests = async () => {
   try {
-    const { data } = await axios.get(`${base}/team/requests`, { headers: authHeader(), timeout: 10000 })
+    const { data } = await api.get('/team/requests')
     requests.value = data?.data || []
   } catch (e: any) {
     ElMessage.error(e?.response?.data?.detail || '获取加入申请失败')
@@ -194,7 +190,7 @@ const approveRequest = async (username: string) => {
   if (approving.value) return
   approving.value = username
   try {
-    const { data } = await axios.post(`${base}/team/approve`, { username }, { headers: authHeader(), timeout: 10000 })
+    const { data } = await api.post('/team/approve', { username })
     ElMessage.success(data?.msg || '已通过申请')
     await loadRequests()
     await loadTeam() // 刷新成员列表，显示新通过成员
@@ -209,7 +205,7 @@ const rejectRequest = async (username: string) => {
   if (approving.value) return
   approving.value = username
   try {
-    const { data } = await axios.post(`${base}/team/reject`, { username }, { headers: authHeader(), timeout: 10000 })
+    const { data } = await api.post('/team/reject', { username })
     ElMessage.success(data?.msg || '已拒绝申请')
     await loadRequests()
   } catch (e: any) {
@@ -230,7 +226,7 @@ const removeMember = async (username: string) => {
     return
   }
   try {
-    const { data } = await axios.post(`${base}/team/remove`, { username }, { headers: authHeader(), timeout: 10000 })
+    const { data } = await api.post('/team/remove', { username })
     ElMessage.success(data?.msg || '移除成功')
     await loadTeam()
   } catch (e: any) {

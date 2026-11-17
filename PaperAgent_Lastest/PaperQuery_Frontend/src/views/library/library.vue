@@ -1,7 +1,7 @@
 <template>
-  <div class="flex-col w-full p-8">
-    <div class="flex items-center justify-between mb-8">
-      <h1 class="text-2xl font-bold">论文库</h1>
+  <div class="library-page pa-page flex-col w-full p-8">
+    <div class="pa-page-heading flex items-center justify-between mb-8">
+      <div><h1 class="text-2xl font-bold">论文库</h1><p class="pa-page-intro">组织研究资料，让每一次问答都有据可循。</p></div>
       <div class="flex gap-2">
         <Button variant="outline" class="px-4 py-2" @click="router.push('/home/library/notes')">笔记集</Button>
         <Button variant="outline" class="px-4 py-2" @click="toggleSelectMode">
@@ -67,11 +67,11 @@
       class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
     >
       <!-- 显示创建卡片 -->
-      <Card class="flex justify-center items-center w-full">
+      <Card class="library-create flex justify-center items-center w-full">
         <Dialog>
           <DialogTrigger as-child>
             <Button variant="ghost" class="w-full h-full text-xl">
-              创建知识
+              + 创建知识库
             </Button>
           </DialogTrigger>
           <div>

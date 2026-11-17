@@ -1,62 +1,37 @@
 import axios from 'axios'
+import { invalidateSession } from '@/services/session'
 
-// 获取环境变量
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '')
+const api = axios.create({ baseURL: apiBaseUrl, timeout: 10000 })
 
-// 创建 Axios 实例
-const api = axios.create({
-  baseURL: apiBaseUrl,
-  timeout: 10000,
+api.interceptors.request.use(config => {
+  const route = config.url ?? ''
+  const isPublic = route === '/login' || route === '/register'
+  const token = localStorage.getItem('token')
+  const isRelative = !/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(route)
+  if (!isPublic && isRelative && token && !config.headers.has('Authorization')) {
+    config.headers.set('Authorization', `Bearer ${token}`)
+  }
+  return config
 })
 
-// // 添加请求拦截器
-// api.interceptors.request.use(
-//   (config) => {
-//     // 在请求发送之前做些什么，比如添加认证头
-//     const token = localStorage.getItem(`token`)
-//     if (token) {
-//       config.headers.Authorization = `Bearer ${token}`
-//     }
-//     return config
-//   },
-//   (error) => {
-//     // 处理请求错误
-//     console.error('Request error:', error)
-//     return Promise.reject(error)
-//   },
-// )
+api.interceptors.response.use(undefined, error => {
+  if (error.response?.status === 401) {
+    const authorization = error.config?.headers.get('Authorization')
+    if (typeof authorization === 'string' && authorization.startsWith('Bearer ')) {
+      invalidateSession(authorization.slice(7))
+    }
+  }
+  return Promise.reject(error)
+})
 
-// // 添加响应拦截器
-// api.interceptors.response.use(
-//   (response) => {
-//     // 对响应数据做点什么
-//     console.log('Response:', response)
-//     return response
-//   },
-//   (error) => {
-//     // 处理响应错误
-//     if (error.response) {
-//       // 服务器响应了一个状态码，它超出了2xx的范围
-//       console.error(
-//         'Response error:',
-//         error.response.status,
-//         error.response.data,
-//       )
-//       if (error.response.status === 401) {
-//         // 处理未授权错误，比如重定向到登录页面
-//         console.log('Unauthorized, redirecting to login...')
-//         // 示例：假设有一个路由器实例 router
-//         router.push('/login')
-//       }
-//     } else if (error.request) {
-//       // 请求已经发出，但没有收到响应
-//       console.error('No response received:', error.request)
-//     } else {
-//       // 其他错误
-//       console.error('Error:', error.message)
-//     }
-//     return Promise.reject(error)
-//   },
-// )
+export async function authFetch(path: `/${string}`, init: RequestInit = {}) {
+  const token = localStorage.getItem('token')
+  const headers = new Headers(init.headers)
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+  const response = await fetch(`${apiBaseUrl}${path}`, { ...init, headers })
+  if (response.status === 401) invalidateSession(token)
+  return response
+}
 
 export default api

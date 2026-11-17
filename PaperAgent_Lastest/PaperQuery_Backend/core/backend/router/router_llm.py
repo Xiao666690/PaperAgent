@@ -2,7 +2,6 @@
 from fastapi import APIRouter, Depends
 from fastapi.requests import Request
 from fastapi.responses import StreamingResponse
-from fastapi.security import OAuth2PasswordBearer
 import json
 import os
 from arxiv_client import PARAMS, ArxivClient
@@ -10,9 +9,8 @@ from core.backend.router.req_res_schema import Chat_Request, Summarise_Request, 
 from core.backend.services.translate import Translator
 import re
 
-from core.backend.utils.utils import format_uids_to_json
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
-router = APIRouter()
+from core.backend.utils.utils import format_uids_to_json, get_current_user
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 def get_chat_agent(request: Request, model: str):
@@ -23,7 +21,7 @@ def get_chat_agent(request: Request, model: str):
 
 ## 聊天对话
 @router.post("/chat/generate")
-def chat_with_paper_generate(chat: Chat_Request, request: Request, token: str = Depends(oauth2_scheme)):
+def chat_with_paper_generate(chat: Chat_Request, request: Request):
     agent = get_chat_agent(request, chat.model)
     docs = request.app.chroma_db.query_paper_with_score_layer1_by_filter(
         chat.input,
@@ -57,7 +55,7 @@ def get_translators():
 
 
 @router.post("/chat/generate_flow")
-def chat_with_paper_generate_flow(chat: Chat_Request, request: Request, token: str = Depends(oauth2_scheme)):
+def chat_with_paper_generate_flow(chat: Chat_Request, request: Request):
     agent = get_chat_agent(request, chat.model)
     translator, translator_rev = get_translators()
     translatedinput = translator.translate(re.sub(r'[\n\r\t]', '', chat.question))
@@ -108,7 +106,7 @@ def chat_with_paper_generate_flow(chat: Chat_Request, request: Request, token: s
 
 
 @router.post("/chat/mulit_file_chat_generate_flow")
-def chat_multi_file_generate_flow(chat: TMP_Chat_Request, request: Request, token: str = Depends(oauth2_scheme)):
+def chat_multi_file_generate_flow(chat: TMP_Chat_Request, request: Request):
     agent = get_chat_agent(request, chat.model)
     translator, translator_rev = get_translators()
     translatedinput = translator.translate(re.sub(r'[\n\r\t]', '', chat.question))
@@ -160,7 +158,7 @@ def chat_multi_file_generate_flow(chat: TMP_Chat_Request, request: Request, toke
 
 ## 对话总结
 @router.post("/chat/summarize")
-def chat_summarise(chat: Summarise_Request, request: Request, token: str = Depends(oauth2_scheme)):
+def chat_summarise(chat: Summarise_Request, request: Request):
     output = request.app.chat_agent.chat_summarise(chat.context, chat.question, chat.answer)
     return {
         "status_code": 200,

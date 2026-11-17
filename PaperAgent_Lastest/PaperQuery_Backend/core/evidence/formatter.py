@@ -8,15 +8,20 @@ from __future__ import annotations
 from core.common.types import Citation, EvidenceChunk
 
 
-def format_evidence(chunks: list[EvidenceChunk]) -> tuple[str, dict[str, EvidenceChunk]]:
+def format_evidence(chunks: list[EvidenceChunk], document_names: dict[str, str] | None = None) -> tuple[str, dict[str, EvidenceChunk]]:
     """把证据片段格式化为带 [C#] 引用的文本，并返回 citation 映射表。"""
     parts: list[str] = []
     citation_map: dict[str, EvidenceChunk] = {}
     for i, e in enumerate(chunks, 1):
         cid = f"C{i}"
-        parts.append(
-            f"[{cid}] document={e.document_id} page={e.page_number} chunk={e.chunk_id}\n{e.text}"
-        )
+        if document_names is not None:
+            # Internal IDs remain in the citation map, not in model-facing labels.
+            label = document_names.get(e.document_id, "未命名论文")
+            parts.append(f"[{cid}] 论文库文件名={label} 页码={e.page_number}\n{e.text}")
+        else:
+            parts.append(
+                f"[{cid}] document={e.document_id} page={e.page_number} chunk={e.chunk_id}\n{e.text}"
+            )
         citation_map[cid] = e
     return "\n\n".join(parts), citation_map
 

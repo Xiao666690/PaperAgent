@@ -1,8 +1,10 @@
 import { consumeSSE } from './sse'
+import { authFetch } from './api'
 
 export interface CitationItem {
   id: string
   documentID: string
+  documentName?: string
   knowledgeID?: string
   page: number
   chunk_id: string
@@ -32,12 +34,10 @@ export interface SearchProgress {
 }
 
 export async function importExternalPaper(pdfUrl: string, knowledgeID: string, title: string) {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL
-  const res = await fetch(`${baseUrl}/document/import_external`, {
+  const res = await authFetch('/document/import_external', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${localStorage.getItem('token')}`,
     },
     body: JSON.stringify({ pdf_url: pdfUrl, knowledgeID, title }),
   })
@@ -58,14 +58,13 @@ export async function askQuestionStream(
   onCitations: (citations: CitationItem[]) => void,
   onSearchStatus: (progress: SearchProgress) => void,
   onExternalPapers: (result: ExternalPaperResult) => void,
+  signal?: AbortSignal,
 ): Promise<void> {
-  const token = localStorage.getItem('token')
-  const baseUrl = import.meta.env.VITE_API_BASE_URL
-  const res = await fetch(`${baseUrl}/qa/stream`, {
+  const res = await authFetch('/qa/stream', {
     method: 'POST',
+    signal,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({
       question,
@@ -79,6 +78,7 @@ export async function askQuestionStream(
     throw new Error(`请求失败：HTTP ${res.status}`)
   }
   await consumeSSE(res, (evt) => {
+    if (signal?.aborted) return
     if (evt.event === 'delta') {
       onDelta(evt.data?.text || '')
     } else if (evt.event === 'citations') {

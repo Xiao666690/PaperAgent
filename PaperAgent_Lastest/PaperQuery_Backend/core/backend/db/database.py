@@ -1,13 +1,12 @@
 # @File : database.py
 import os
-from pathlib import Path
 
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-DB_PATH = os.getenv("DB_PATH", "./res/AcadeAgent/database.db")
-Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
+DB_PATH=os.getenv("DB_PATH")
+print(DB_PATH)
 SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
 
 engine = create_engine(

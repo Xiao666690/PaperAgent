@@ -59,18 +59,19 @@ export const useChatHistoryStore = defineStore('chatHistory', () => {
     localStorage.setItem(getStorageKey(), JSON.stringify(state.sessions))
   }
 
-  function saveSnapshot(snapshot: Omit<ChatSession, 'id' | 'updatedAt'>) {
+  function saveSnapshot(snapshot: Omit<ChatSession, 'id' | 'updatedAt'>, sessionId?: string) {
     if (snapshot.messages.length === 0) return
 
-    if (!state.currentSessionId) {
+    if (!sessionId && !state.currentSessionId) {
       state.currentSessionId = createSessionId()
     }
 
-    const index = state.sessions.findIndex(item => item.id === state.currentSessionId)
+    const targetId = sessionId || state.currentSessionId
+    const index = state.sessions.findIndex(item => item.id === targetId)
     const previous = index >= 0 ? state.sessions[index] : undefined
     const session: ChatSession = {
       ...snapshot,
-      id: state.currentSessionId,
+      id: targetId,
       updatedAt: Date.now(),
       title: previous?.isTitleCustomized ? previous.title : snapshot.title,
       summary: snapshot.summary || snapshot.memory || previous?.summary || '',

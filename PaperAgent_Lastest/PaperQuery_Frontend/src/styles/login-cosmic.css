@@ -1,0 +1,76 @@
+/* Full-size animated research halo, matched to the paper-white workbench. */
+body.pa-theme .cosmic-login { background: #f8fcff; color: #202438; }
+.cosmic-login::before { display: none; }
+.cosmic-background { position: fixed; inset: 0; z-index: -1; pointer-events: none; background: #f8fcff; }
+.cosmic-background canvas { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; display: block; }
+.cosmic-background[data-renderer=webgl] .cosmic-fallback { display: none; }
+.cosmic-vignette { position: absolute; inset: 0; z-index: 2; background: linear-gradient(0deg,#f8fcff 0%,#f8fcff33 35%,transparent 68%),linear-gradient(90deg,transparent 40%,#f8fcff22 76%,#f8fcffbb); }
+.cosmic-fallback { position: absolute; inset: 0; overflow: hidden; background: radial-gradient(ellipse at 27% 30%,#ddecfa,#f8fcff 65%); }
+.fallback-nebula { position: absolute; inset: 0; background: radial-gradient(ellipse at 25% 25%,#8ab5de22,transparent 40%),radial-gradient(ellipse at 55% 60%,#90b8ec22,transparent 50%); }
+.fallback-horizon { position: absolute; width: 44vh; height: 44vh; top: 15%; left: calc(34% - 22vh); border-radius: 50%; background: #f8fcff; box-shadow: 0 0 5px 3px #a0c2e2,0 0 22px 9px #8bb2d755,0 0 80px 30px #99baef26; }
+.fallback-disk { position: absolute; width: 82vh; height: 15vh; top: 29%; left: calc(34% - 41vh); border: 3px solid #96b7d666; border-radius: 50%; transform: rotate(20deg); box-shadow: 0 0 12px #9ab9ec44,inset 0 0 8px #9cbede55; }
+.cosmic-login .discovery-layout { min-height: 100dvh; max-width: 1640px; padding: 46px 70px 42px; gap: 100px; grid-template-columns: minmax(0,1.5fr) minmax(370px,1fr); }
+.cosmic-login .discovery-cover { position: relative; justify-content: flex-end; padding-top: 360px; }
+.cosmic-login .cover-brand { position: absolute; top: 0; left: 0; }
+.cosmic-login .cover-story { margin-bottom: 18px; padding: 16px 0; }
+.cosmic-login .cover-story h1.discovery-slogan { font-weight: 700; letter-spacing: -.055em; font-size: clamp(21px,8.6cqw,62px); padding-right: 3px; }
+.cosmic-login .cover-story p { font-size: 14px; line-height: 1.9; margin-top: 18px; }
+.cosmic-login .research-scene { display: none; }
+.cosmic-login .cover-bottom { margin-top: 47px; padding-top: 20px; border-top: 1px solid #8aa8c533; max-width: none; }
+.cosmic-login .discovery-form-panel { padding-top: 90px; }
+.cosmic-login .auth-card { background: #ffffffdc; border-color: #d2dde8; box-shadow: 0 25px 75px #51789c0b,inset 0 1px 0 #fff; backdrop-filter: blur(16px); }
+@media(max-width:1150px) { .cosmic-login .discovery-layout { gap: 48px; padding: 32px 40px; grid-template-columns: minmax(0,1.35fr) minmax(330px,1fr); }.cosmic-login .cover-capabilities { gap: 15px; } }
+@media(max-width:850px) { .cosmic-login .discovery-layout { padding: 28px 22px; gap: 20px; display: flex; justify-content: flex-start; }.cosmic-login .discovery-cover { padding-top: 265px; }.cosmic-login .cover-brand { top: 0; }.cosmic-login .cover-story { padding: 0; margin: 0; }.cosmic-login .cover-story h1.discovery-slogan { font-size: clamp(18px,9cqw,37px); }.cosmic-login .cover-story p { font-size: 12px; margin-top: 10px; }.cosmic-login .cover-eyebrow { margin-bottom: 9px; }.cosmic-login .cover-bottom { display: none; }.cosmic-login .discovery-form-panel { padding: 0; }.cosmic-login .auth-card { background: #ffffffeb; }.cosmic-vignette { background: linear-gradient(0deg,#f8fcff 0%,#f8fcff33 50%,transparent 80%); }.fallback-horizon { width: 52vw; height: 52vw; top: 9%; left: 24%; }.fallback-disk { width: 92vw; height: 18vw; top: 20%; left: 4%; } }
+@media(max-height:760px) and (min-width:851px) { .cosmic-login .discovery-cover { padding-top: 240px; }.cosmic-login .cover-bottom { margin-top: 20px; }.cosmic-login .discovery-form-panel { padding-top: 35px; } }
+@media(prefers-reduced-motion:reduce) { .cosmic-login .slogan-aura,.cosmic-login .slogan-light { display: none; } }
+
+/* Reference-blue artwork; the brand promise is the foreground protagonist. */
+.cosmic-background { background: #eaf6ff; }
+.cosmic-fallback { background-size: cover; background-position: center; transform: scaleX(-1); }
+.cosmic-vignette { background: linear-gradient(90deg,#f4faff14 0%,#f4faff22 44%,#f4faff88 67%,#f4faffb3 100%),linear-gradient(0deg,#f5faff99,transparent 38%); }
+.cosmic-login .discovery-layout { z-index: 1; gap: 65px; grid-template-columns: minmax(0,1.65fr) minmax(370px,1fr); }
+.cosmic-login .discovery-cover { justify-content: center; padding-top: 170px; }
+.cosmic-login .cover-story { position: relative; isolation: isolate; padding: 30px 0; }
+.cosmic-login .cover-story::before { content: ''; position: absolute; z-index: -1; pointer-events: none; inset: -85px -80px -65px -95px; background: radial-gradient(ellipse,#f6fbfff5 0%,#f6fbffcc 34%,#f6fbff66 52%,transparent 73%); }
+.cosmic-login .cover-story h1.discovery-slogan { font-size: clamp(23px,9.65cqw,76px); font-weight: 750; letter-spacing: -.055em; line-height: 1.5; text-shadow: 0 3px 28px #ffffffa0; }
+.cosmic-login .slogan-text { background-image: linear-gradient(105deg,#07488c 0%,#087ad2 53%,#169ed9 100%); }
+.cosmic-login .slogan-aura { background-image: linear-gradient(105deg,#075cac,#128de1 58%,#1aace0); }
+.cosmic-login .slogan-light { display: none; }
+.cosmic-login .discovery-slogan::after { left: 0; width: 85%; background: linear-gradient(90deg,#0d83dd77,#78ccf099,transparent); }
+.cosmic-login .cover-eyebrow { color: #3879ab; font-size: 11px; letter-spacing: 2px; }
+.cosmic-login .cover-story p { color: #44687e; font-size: 15px; line-height: 1.95; margin-top: 15px; }
+.cosmic-login .cover-bottom { position: absolute; left: 0; bottom: 0; width: 100%; padding-top: 20px; border-color: #68abd633; }
+.cosmic-login .cover-capabilities > span { color: #446c87; }
+.cosmic-login .cover-capabilities svg { color: #2287c6; }
+.cosmic-login .brand-edition { color: #537b98; }
+.cosmic-login .auth-card { background: #ffffffed; border-color: #a9cde788; box-shadow: 0 28px 75px #135c8b12,inset 0 1px 0 #fff; }
+.cosmic-login .discovery-submit { background: linear-gradient(110deg,#147bdf,#139fd6); border-color: #1a87d8; box-shadow: 0 7px 21px #168ade28; }
+.cosmic-login .auth-heading h2 { color: #15384d; }
+.cosmic-login .discovery-form-panel { padding-top: 40px; }
+.research-orbit-icons { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+.orbit-science { position: absolute; display: grid; place-items: center; width: 57px; height: 57px; border-radius: 14px; color: #087dcc; background: linear-gradient(135deg,#ffffffb3,#bbecff55); border: 1px solid #ffffffbc; box-shadow: 0 8px 28px #107fbb22,inset 0 0 12px #ffffff88; backdrop-filter: blur(3px); animation: orbit-icon-float 9s ease-in-out infinite; }
+.orbit-network { left: 8%; top: 22%; transform: rotate(-12deg); }.orbit-database { left: 41%; top: 16%; border-radius: 50%; animation-delay: -3s; }.orbit-paper { left: 39%; top: 30%; animation-delay: -5s; }.orbit-chart { left: 5%; top: 43%; animation-delay: -7s; }
+@keyframes orbit-icon-float { 0%,100% { transform: translateY(0) rotate(-7deg); } 50% { transform: translateY(-10px) rotate(-3deg); } }
+.discovery-login:has(.auth-card:focus-within) .orbit-science { animation-play-state: paused; }
+@media(max-width:1150px) { .cosmic-login .discovery-layout { gap: 35px; grid-template-columns: minmax(0,1.4fr) minmax(330px,1fr); } }
+@media(max-width:850px) { .cosmic-login .discovery-layout { gap: 22px; }.cosmic-login .discovery-cover { padding-top: 235px; }.cosmic-login .cover-story { padding: 8px 0 0; }.cosmic-login .cover-story h1.discovery-slogan { font-size: clamp(18px,9.65cqw,39px); }.cosmic-login .cover-story p { font-size: 12px; }.cosmic-login .discovery-form-panel { padding: 0; }.cosmic-fallback { background-position: 80% center; }.orbit-science { width: 38px; height: 38px; border-radius: 11px; }.orbit-science svg { width: 21px; height: 21px; }.orbit-network { top: 15%; left: 12%; }.orbit-database { top: 10%; left: 73%; }.orbit-paper { top: 22%; left: 64%; }.orbit-chart { display: none; } }
+@media(prefers-reduced-motion:reduce) { .orbit-science { animation: none; } }
+
+/* A clear account-entry surface against the luminous background. */
+body.pa-theme .cosmic-login .auth-card { max-width: 430px; background: #fffffffa; border: 1.5px solid #75b4e6; border-radius: 24px; padding: 36px 34px 28px; box-shadow: 0 22px 65px #064f9229,0 5px 16px #126ba91a,inset 0 1px 0 #fff; }
+.cosmic-login .auth-card::before { top: -1px; left: 18%; width: 64%; height: 3px; border-radius: 5px; background: linear-gradient(90deg,transparent,#1387e5,#22b5e5,transparent); }
+.cosmic-login .auth-eyebrow { display: inline-flex; align-items: center; gap: 7px; padding: 6px 9px; color: #116bb6; background: #e9f5ff; border: 1px solid #c5e4fa; border-radius: 7px; font-size: 11px; letter-spacing: 1px; }
+.cosmic-login .auth-heading h2 { font-size: 29px; color: #16364b; letter-spacing: -.7px; margin-top: 17px; }
+.cosmic-login .auth-heading > p { color: #5b7287; font-size: 13px; }
+.cosmic-login .auth-field label { color: #27485e; font-size: 13px; font-weight: 650; }
+body.pa-theme .cosmic-login .auth-field input { height: 50px; border: 1px solid #a5c4da; background: #f8fcff; color: #1b3c54; font-size: 14px; border-radius: 10px; }
+body.pa-theme .cosmic-login .auth-field input:focus { border-color: #167fde; background: #fff; box-shadow: 0 0 0 4px #168ce51a; }
+.cosmic-login .auth-field input::placeholder { color: #7b93a6; }
+body.pa-theme .cosmic-login .discovery-submit { height: 50px; font-size: 14px; border: 1px solid #086bca; background: linear-gradient(110deg,#0872d8,#079ddd); box-shadow: 0 7px 19px #1389d933; }
+body.pa-theme .cosmic-login .discovery-submit:disabled { opacity: .65; }
+.cosmic-login .discovery-auth-switch { height: 42px; color: #146bac; font-size: 13px; font-weight: 550; border-color: #add3ef; background: #f8fcff; }
+.cosmic-login .auth-demo { color: #70899d; font-size: 11px; }
+.cosmic-login .auth-divider i { color: #758c9f; }
+.cosmic-login .auth-footnote { color: #547c98; font-size: 11px; }
+@media(hover:hover) and (pointer:fine) { body.pa-theme .cosmic-login .discovery-submit:hover { background: linear-gradient(110deg,#0865c2,#078cc9); box-shadow: 0 9px 24px #087fcb40; }.cosmic-login .discovery-auth-switch:hover { background: #eaf6ff; } }
+@media(max-width:850px) { body.pa-theme .cosmic-login .auth-card { padding: 28px 24px; }.cosmic-login .auth-heading h2 { font-size: 26px; } }

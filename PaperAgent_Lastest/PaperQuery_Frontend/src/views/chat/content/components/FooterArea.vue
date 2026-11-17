@@ -1,18 +1,17 @@
-<!-- 这是底部的输入区域 -->
 <template>
-  <div class="relative flex w-full justify-center mt-4 mb-4">
-    <div class="w-full relative flex">
-      <div class="absolute bottom-0 w-full">
-        <DocumentList class="w-1/2 resize-none m-auto" />
-        <InputBox class="w-1/2 resize-none m-auto"></InputBox>
-      </div>
+  <div class="chat-footer">
+    <div class="composer-stack">
+      <DocumentList />
+      <InputBox />
+      <p class="composer-caption">回答基于本轮所选论文，请结合引用核查重要结论。</p>
     </div>
   </div>
 </template>
-
-<style lang="scss" scoped></style>
-
 <script setup lang="ts">
 import DocumentList from '../../components/DocumentList.vue'
 import InputBox from '../../components/InputBox.vue'
 </script>
+<style scoped>
+.composer-stack { max-width: 800px; width: 100%; margin: 0 auto; }
+.composer-caption { margin: 8px 0 0; color: #70798b; font-size: 11px; text-align: center; }
+</style>

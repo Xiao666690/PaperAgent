@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import progress from '@bassist/progress'
 import routes from './routes'
+import { clearSession, sessionExpiredEvent } from '@/services/session'
 
 // 配置进度条
 progress.configure({ showSpinner: false })
@@ -19,16 +20,15 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   progress.start()
 
-  // 从本地存储中获取用户登录状态
-  const username = localStorage.getItem('username')
-
-  const loggedIn = localStorage.getItem('token') && username
-  
-  // 检测用户是否登录 如果未登录则跳转到登录页面
-  if (to.matched.some((record) => record.meta.requiresAuth) && !loggedIn) {
-    console.log('未登录')
-    next('/login')
-    return
+  if (to.meta.requiresAuth) {
+    const token = localStorage.getItem('token')
+    const expiresAt = Number(localStorage.getItem('tokenExpiresAt'))
+    const expired = Boolean(token && expiresAt > 0 && Date.now() >= expiresAt * 1000)
+    if (!token || !localStorage.getItem('username') || expired) {
+      if (expired) clearSession()
+      next({ path: '/login', query: { redirect: to.fullPath, ...(expired ? { reason: 'expired' } : {}) } })
+      return
+    }
   }
 
   // 仅 admin 可访问的路由（如团队管理），普通用户跳回首页
@@ -41,6 +41,13 @@ router.beforeEach((to, _from, next) => {
   }
 
   next()
+})
+
+window.addEventListener(sessionExpiredEvent, () => {
+  const route = router.currentRoute.value
+  if (route.meta.requiresAuth) {
+    void router.replace({ path: '/login', query: { redirect: route.fullPath, reason: 'expired' } })
+  }
 })
 
 router.afterEach(() => {

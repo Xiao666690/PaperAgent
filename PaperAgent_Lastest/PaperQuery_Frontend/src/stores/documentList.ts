@@ -50,6 +50,12 @@ export const useDocumentListStore = defineStore('documentList', () => {
     return state.selectedDocumentIDs.filter(id => state.documentList.some(item => item.documentID === id))
   }
 
+  function renameDocument(documentID: string, knowledgeID: string, name: string) {
+    for (const item of state.documentList) {
+      if (item.documentID === documentID && item.knowledgeID === knowledgeID) item.documentName = name
+    }
+  }
+
   function toggleDocument(documentID: string) {
     state.selectedDocumentIDs = state.selectedDocumentIDs.includes(documentID)
       ? state.selectedDocumentIDs.filter(id => id !== documentID)
@@ -87,6 +93,7 @@ export const useDocumentListStore = defineStore('documentList', () => {
     appendDocument,
     deleteDocument,
     deleteDocumentById,
+    renameDocument,
     toggleDocument,
     getSelectedSnapshots,
     restoreDocuments,

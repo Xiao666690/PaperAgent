@@ -16,6 +16,7 @@ from langchain_core.embeddings import Embeddings
 from core.agent.chatAgent import ChatAgent
 from core.backend.db.database import SessionLocal, engine
 from core.backend.db.models import Base
+from core.backend.services.guided_research import GuidedResearchWorker
 from core.backend.router import (
     router_document,
     router_knowledge,
@@ -81,6 +82,7 @@ def _build_skill_registry():
     from core.skills.extract import ExperimentExtractSkill, MethodExtractSkill
     from core.skills.paper_reader import PaperReaderSkill
     from core.skills.paper_search import PaperSearchSkill
+    from core.skills.web_search import WebSearchSkill
     from core.skills.registry import SkillRegistry
 
     registry = SkillRegistry()
@@ -88,6 +90,7 @@ def _build_skill_registry():
     registry.register(ReportGenerateSkill())
     registry.register(PaperCompareSkill())
     registry.register(PaperSearchSkill())
+    registry.register(WebSearchSkill())
     registry.register(PaperReaderSkill())
     registry.register(MethodExtractSkill())
     registry.register(ExperimentExtractSkill())
@@ -194,7 +197,17 @@ async def lifespan(app: FastAPI):
     )
     print(f"[V2] Research Orchestrator 初始化完成（{len(app.skill_registry.names())} 个 Skills）")
 
-    yield
+    worker = GuidedResearchWorker(SessionLocal, app.research_orchestrator)
+    app.guided_research_worker = worker
+    worker.thread.start()
+    worker.review_thread.start()
+    try:
+        yield
+    finally:
+        worker.stop.set()
+        worker.wake.set()
+        await asyncio.to_thread(worker.thread.join, 2)
+        await asyncio.to_thread(worker.review_thread.join, 2)
     # Clean up the ML models and release resources
     print("shutdown!")
 

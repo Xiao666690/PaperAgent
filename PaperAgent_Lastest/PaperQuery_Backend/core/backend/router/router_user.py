@@ -8,7 +8,6 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-from fastapi.security import OAuth2PasswordBearer
 
 from core.backend.schema.schema import LoginRequest, RegisterRequest
 from core.backend.db.models import Team, TeamMember, TeamRequest, User
@@ -68,25 +67,6 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
         else:
             return {"status_code": 201, "msg": "注册成功，团队不存在，未提交申请"}
     return {"status_code": 201, "msg": "注册成功，请登录"}
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
-
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)],db: Session = Depends(get_db)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, os.getenv("SECRET_KEY"), algorithms=[os.getenv("ALGORITHM")])
-        username: str = payload.get("username") 
-    except Exception:
-        raise credentials_exception
-    user = query_user(db, username=username)
-    if user is None:
-        raise credentials_exception
-    return attach_workspace_lid(db, user)
-
 
 @router.post("/login")
 def login_for_access_token(loginrequest: LoginRequest,db: Session = Depends(get_db)):

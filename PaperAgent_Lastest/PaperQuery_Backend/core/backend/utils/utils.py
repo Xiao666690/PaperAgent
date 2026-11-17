@@ -67,7 +67,7 @@ def attach_workspace_lid(db, user):
     user.workspace_lid = get_workspace_lid(db, user)
     return user
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)],db: Session = Depends(get_db)):
+def authenticate_access_token(token: str, db: Session):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -75,13 +75,19 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)],db: Ses
     )
     try:
         payload = jwt.decode(token, os.getenv("SECRET_KEY"), algorithms=[os.getenv("ALGORITHM")])
-        username: str = payload.get("username") 
-    except Exception:
+    except jwt.InvalidTokenError as exc:
+        raise credentials_exception from exc
+    username = payload.get("username")
+    if not isinstance(username, str) or not username:
         raise credentials_exception
     user = query_user(db, username=username)
     if user is None:
         raise credentials_exception
     return attach_workspace_lid(db, user)
+
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Session = Depends(get_db)):
+    return authenticate_access_token(token, db)
 
 
 def get_document_tags(doc):

@@ -51,9 +51,16 @@ def is_obvious_general_chat(query: str) -> bool:
     """识别无需论文证据的简短问候，避免分类模型异常时误入 RAG。"""
     normalized = re.sub(r"[\s\W_]+", " ", query, flags=re.UNICODE).strip().lower()
     compact = normalized.replace(" ", "")
-    return normalized in _CASUAL_CHAT_PHRASES or compact in {
+    greeting = normalized in _CASUAL_CHAT_PHRASES or compact in {
         phrase.replace(" ", "") for phrase in _CASUAL_CHAT_PHRASES
     }
+    if greeting:
+        return True
+    if re.search(r'这篇|该论文|当前论文|本文|文中|所选|已选|本篇|论文中|this paper|selected paper|uploaded paper', query, re.I):
+        return False
+    return bool(re.search(
+        r'^(?:请|帮我|能否|可以|给我|用通俗的话|用简单的话)*\s*(?:解释|讲解|什么是|怎么理解|写(?:一个|一段|一?封|一?份|一?篇)|翻译(?:一下)?|润色|制定|规划)|'
+        r'python.*(?:代码|函数|报错)|(?:代码|程序)(?:报错|怎么写)|\b(?:write|debug|explain|translate)\b', query, re.I))
 
 
 def _clean_json(text: str) -> str:
@@ -91,9 +98,11 @@ class DecisionEngine:
         try:
             return self._parse(self._invoke(prompt), IntentDecision)
         except Exception:
-            # Fail-safe：复杂请求宁可进入 PAPER_QA 检查，也不直接胡答
+            # A classifier outage must not turn every ordinary question into paper retrieval.
+            paper_reference = bool(re.search(r'这篇|该论文|当前论文|本文|文中|所选|已选|本篇|论文中|this paper|selected paper|uploaded paper', query, re.I))
             return IntentDecision(
-                intent=IntentType.PAPER_QA, confidence=0.0, reason_code="PARSER_FALLBACK"
+                intent=IntentType.PAPER_QA if paper_reference else IntentType.GENERAL_CHAT,
+                confidence=0.0, reason_code="PARSER_FALLBACK"
             )
 
     def decide_evidence(self, query: str, evidence: str) -> EvidenceDecision:

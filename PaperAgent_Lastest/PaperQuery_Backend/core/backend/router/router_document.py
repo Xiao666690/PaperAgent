@@ -37,6 +37,33 @@ class ExternalPaperImport(BaseModel):
     title: str | None = None
 
 
+class DocumentRename(BaseModel):
+    knowledgeID: str
+    documentID: str
+    documentName: str
+
+
+@router.post("/document/rename")
+async def rename_document(payload: DocumentRename, token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    user = await get_current_user(token, db)
+    name = payload.documentName.strip()
+    if not name or len(name) > 255 or any(ord(char) < 32 for char in name):
+        raise HTTPException(status_code=422, detail="论文名称须为 1–255 个字符，不能包含换行或控制字符")
+    document = db.query(Document).filter(
+        Document.uid == payload.documentID,
+        Document.knowledgeID == payload.knowledgeID,
+        Document.lid == user.workspace_lid,
+    ).first()
+    if not document:
+        raise HTTPException(status_code=404, detail="未找到指定论文")
+    # Display metadata only: file paths, identifiers and vector indices stay stable.
+    document.documentName = name
+    db.commit()
+    return {"status_code": 200, "msg": "论文名称已更新", "data": {
+        "documentID": document.uid, "knowledgeID": document.knowledgeID, "documentName": document.documentName,
+    }}
+
+
 def _allowed_arxiv_pdf(url: str) -> bool:
     try:
         parsed = urlsplit(url)
@@ -173,13 +200,21 @@ async def get_document(
         Document.lid == user.workspace_lid,
     ).first()
     if not document:
-        return {
-            "status_code": 404,
-            "msg": "document not found",
-        }
-    file_path =os.getenv("AcadeAgent_DIR")+document.documentPath
-    print("File_path",file_path) # 替换成你实际的 PDF 文件路径
-    return FileResponse(file_path)
+        # Historical citations can contain the PDF's temporary index scope.
+        # Resolve by PDF ID within this user's workspace, never across accounts.
+        document = db.query(Document).filter(
+            Document.uid == documentID, Document.lid == user.workspace_lid,
+        ).first()
+    if not document:
+        document = db.query(TMPDocument).filter(
+            TMPDocument.uid == documentID, TMPDocument.lid == user.workspace_lid,
+        ).first()
+    if not document:
+        raise HTTPException(status_code=404, detail="当前账号中未找到这篇论文")
+    file_path = os.getenv("AcadeAgent_DIR") + document.documentPath
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=404, detail="论文 PDF 文件不存在")
+    return FileResponse(file_path, media_type="application/pdf")
 
 ## 多文件对话-文件上传 
 @router.post("/document/multi_file_chat_upload")

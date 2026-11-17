@@ -2,7 +2,7 @@
 <template>
   <div
     ref="messageContainer"
-    class="flex justify-center overflow-y-auto p-8 mb-14"
+    class="chat-messages flex justify-center overflow-y-auto p-6 min-h-0"
   >
     <div class="w-full max-w-4xl">
       <Empty v-show="messageList.length === 0" />

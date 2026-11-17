@@ -13,6 +13,14 @@ import '@/styles/var.less'
 import '@/styles/mixin.less'
 import '@/styles/global.less'
 import './assets/index.css'
+import '@/styles/paperagent-theme.css'
+import '@/styles/login-cover.css'
+import '@/styles/login-cosmic.css'
+
+document.body.classList.add('pa-theme')
+// Frequent keyboard actions stay immediate; pointer interactions keep press feedback.
+document.addEventListener('keydown', () => document.body.classList.add('pa-keyboard'))
+document.addEventListener('pointerdown', () => document.body.classList.remove('pa-keyboard'), { passive: true })
 
 // 创建 Pinia 实例
 const pinia = createPinia()

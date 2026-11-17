@@ -1,4 +1,4 @@
-import api from '@/api/api'
+import api, { authFetch } from '@/api/api'
 import { type ChatRequest } from '@/types/type'
 
 export const getLibraryInfo = async () => {
@@ -91,6 +91,17 @@ export const deleteKnowledge = async (knowledgeIDs: string[]) => {
     return resp.data
   } catch (e: any) {
     throw new Error(e.response?.data?.msg || e.message || '删除知识失败')
+  }
+}
+
+export const renameDocument = async (knowledgeID: string, documentID: string, documentName: string) => {
+  try {
+    const resp = await api.post('/document/rename', { knowledgeID, documentID, documentName }, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
+    })
+    return resp.data
+  } catch (e: any) {
+    throw new Error(e.response?.data?.detail || e.response?.data?.msg || e.message || '重命名失败')
   }
 }
 
@@ -258,17 +269,11 @@ export const askQuestion = async (req: ChatRequest) => {
 export const askQuestionStream = async (req: ChatRequest, store: any) => {
   let messageIndex = -1
   try {
-    let token = localStorage.getItem('token')
-    if (token) {
-      token = `Bearer ${token}`
-    }
-    const url = import.meta.env.VITE_API_BASE_URL
-    const response = await fetch(`${url}/chat/generate_flow`, {
+    const response = await authFetch('/chat/generate_flow', {
       method: 'POST',
       body: JSON.stringify(req),
       headers: {
         'Content-Type': 'application/json',
-        Authorization: token as string,
       },
     })
 

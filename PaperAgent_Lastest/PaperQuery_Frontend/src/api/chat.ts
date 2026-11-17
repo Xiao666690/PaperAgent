@@ -1,4 +1,4 @@
-import axios from "@/plugins/axios";
+import api, { authFetch } from "@/api/api";
 
 import { parsePack2 } from "@/utils/parsePack";
 
@@ -13,14 +13,14 @@ export const uploadFile = async (
     if (options.knowledgeID) {
       formData.append("knowledgeID", options.knowledgeID);
     }
-    const resp = await axios.post(
-      `${import.meta.env.VITE_API_BASE_URL}/document/multi_file_chat_upload`,
+    const resp = await api.post(
+      '/document/multi_file_chat_upload',
       formData,
       {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
           "Content-Type": "multipart/form-data",
         },
+        timeout: 60000,
       }
     );
     return resp.data.data;
@@ -36,12 +36,10 @@ export const getAnswerStream = async (
   uid: Array<string>,
   model: string = "deepseek"
 ) => {
-  const url = `${import.meta.env.VITE_API_BASE_URL}/chat/mulit_file_chat_generate_flow`;
   try {
-    const res = await fetch(url, {
+    const res = await authFetch('/chat/mulit_file_chat_generate_flow', {
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
       },
       method: "POST",
       body: JSON.stringify({
@@ -104,11 +102,7 @@ export const updateMemory = async (
       context: context,
       answer: answer,
     };
-    const resp = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/chat/summarize`, data, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
+    const resp = await api.post('/chat/summarize', data, { timeout: 60000 });
     return resp.data.data;
   } catch (error) {
     console.log(error);

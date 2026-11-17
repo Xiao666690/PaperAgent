@@ -3,43 +3,29 @@ from __future__ import annotations
 
 import json
 import logging
-import os
+import re
 import threading
 import time
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
-import jwt
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
-from fastapi.security import OAuth2PasswordBearer
 from langchain_core.callbacks import BaseCallbackHandler
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.dialects.sqlite import insert
 
-from core.backend.crud.crud_user import query_user
-from core.backend.db.models import Artifact, Document, ResearchStep, ResearchTask
-from core.backend.utils.utils import attach_workspace_lid, get_db
+from core.backend.db.models import Artifact, Document, GuidedResearch, ResearchFeedback, ResearchStep, ResearchTask
+from core.backend.services import guided_research as guided
+from core.backend.utils.utils import authenticate_access_token, get_db, oauth2_scheme
+from core.research.guided import Difficulty, Question, ResearchPreference, event, normalized
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 router = APIRouter()
 logger = logging.getLogger(__name__)
 _research_slots = threading.BoundedSemaphore(2)
-
-
-def _get_user(token: str, db: Session):
-    """同步获取当前用户（供 sync 端点使用，避免 async 依赖注入）。"""
-    try:
-        payload = jwt.decode(token, os.getenv("SECRET_KEY"), algorithms=[os.getenv("ALGORITHM")])
-        username = payload.get("username")
-    except Exception:
-        raise HTTPException(status_code=401, detail="Could not validate credentials")
-    user = query_user(db, username=username)
-    if user is None:
-        raise HTTPException(status_code=401, detail="Could not validate credentials")
-    return attach_workspace_lid(db, user)
 
 
 class ResearchTaskCreate(BaseModel):
@@ -47,6 +33,229 @@ class ResearchTaskCreate(BaseModel):
     mode: str = "research"
     document_ids: list[str] = Field(default_factory=list)
     parent_task_id: str | None = None
+    source: Literal["auto", "library", "discovery"] | None = None
+
+
+class ResearchReview(BaseModel):
+    revision: int
+    action: Literal["continue", "revise", "repair", "cancel", "resume", "rewind"]
+    questions: list[Question] | None = Field(default=None, max_length=30)
+    query: str | None = Field(default=None, max_length=300)
+    step_id: str | None = None
+    difficulty: Difficulty | None = None
+    review_policy: Literal["all", "checkpoints"] | None = None
+    objective: str | None = Field(default=None, min_length=1, max_length=4000, pattern=r"\S")
+
+
+class ResearchFeedbackInput(BaseModel):
+    plan_version: int = Field(ge=1)
+    rating: Literal["satisfied", "unsatisfied"]
+    reason: Literal["answer_quality", "missing_evidence", "incomplete", "off_topic", "too_verbose"] | None = None
+    note: str = Field(default="", max_length=1000)
+    preference: ResearchPreference | None = None
+
+
+def feedback_summary(feedback: ResearchFeedback | None) -> dict | None:
+    if feedback is not None:
+        return {key: getattr(feedback, key) for key in ("rating", "reason", "note", "preference")}
+    return None
+
+
+@router.put("/research/tasks/{task_id}/feedback")
+def save_research_feedback(
+    task_id: str, req: ResearchFeedbackInput,
+    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db),
+):
+    user = authenticate_access_token(token, db)
+    task = db.query(ResearchTask).filter_by(task_id=task_id, lid=user.workspace_lid).first()
+    row = db.get(GuidedResearch, task_id) if task else None
+    if not row:
+        raise HTTPException(status_code=404, detail="找不到研究结果")
+    state = guided.load(row)
+    if not guided.sources_available(db, user.workspace_lid, state):
+        raise HTTPException(status_code=403, detail="研究资料权限已变化")
+    if (task.status not in {"SUCCESS", "PARTIAL", "FAILED", "CANCELLED"}
+            or state["plan_version"] != req.plan_version
+            or (task.status == "CANCELLED" and not guided.report_artifacts(state, task_id))):
+        raise HTTPException(status_code=409, detail="研究结果或报告版本已变化，请刷新")
+    values = req.model_dump() | {
+        "workspace_lid": user.workspace_lid, "updated_at": _utc_now(),
+    }
+    statement = insert(ResearchFeedback).values(task_id=task_id, username=user.username, **values)
+    db.execute(statement.on_conflict_do_update(
+        index_elements=["task_id", "plan_version", "username"], set_=values,
+    ))
+    db.commit()
+    return {"data": req.model_dump()}
+
+
+def _wake_worker(request: Request):
+    worker = getattr(request.app, "guided_research_worker", None)
+    if worker:
+        worker.wake.set()
+
+
+@router.get("/research/documents")
+def list_research_documents(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    user = authenticate_access_token(token, db)
+    return {"data": [
+        {"id": doc["id"], "title": doc["title"]}
+        for doc in guided.documents(db, user.workspace_lid)
+    ]}
+
+
+def _create_guided_task(req, request, db, user):
+    workspace = user.workspace_lid
+    goal = req.goal.strip()
+    if not goal or len(goal) > 4000:
+        raise HTTPException(status_code=422, detail="请输入 1–4000 字的研究目标")
+    if req.parent_task_id and not db.query(ResearchTask).filter_by(task_id=req.parent_task_id, lid=workspace).first():
+        raise HTTPException(status_code=404, detail="上一轮研究任务不存在")
+    requested = set(req.document_ids)
+    source = req.source
+    if source == "auto":
+        external = r"联网|网上|外部文献|公开文献|公开论文|arxiv|openalex|web search"
+        local_only = re.search(
+            rf"(?:仅|只)(?:使用|用|查|检索)本地|"
+            rf"(?:禁止|避免|无需|不(?:要|用|需要|允许)?)\s*(?:使用|进行|搜索|检索|查找)?\s*(?:{external})",
+            goal, re.IGNORECASE,
+        )
+        if local_only and not requested:
+            raise HTTPException(status_code=422, detail="深度研究使用公开学术搜索。仅分析本地论文时，请在论文阅读功能中提问。")
+        source = "library" if requested else "discovery"
+    documents = guided.documents(db, workspace) if requested or source == "library" else []
+    if requested - {doc["id"] for doc in documents}:
+        raise HTTPException(status_code=403, detail="部分论文不在当前资料库")
+    if source == "discovery":
+        selected = []
+    else:
+        selected = [doc for doc in documents if not requested or doc["id"] in requested]
+        if not selected:
+            raise HTTPException(status_code=422, detail="论文库没有可用论文，请先上传 PDF")
+    task_id = uuid.uuid4().hex[:12]
+    state = guided.initial_state(source, selected)
+    state["goal"] = goal
+    if req.parent_task_id:
+        parent = db.get(GuidedResearch, req.parent_task_id)
+        if parent:
+            parent_state = guided.load(parent)
+            visible_ids = {doc["id"] for doc in selected}
+            same_source = source == parent_state["source"]
+            if same_source and guided.sources_available(db, workspace, parent_state):
+                context = [
+                    finding["text"][:250]
+                    for step in parent_state["steps"] for finding in step["findings"]
+                    if finding["references"]
+                    and all(ref.get("url") if source == "discovery" else ref["document_id"] in visible_ids
+                            for ref in finding["references"])
+                ][:6]
+                if context:
+                    state["parent_context"] = context
+                    event(state, "已关联上一轮结果", "用于理解后续目标，当前任务会重新检索")
+    latest_preference = db.query(ResearchFeedback.preference).filter(
+        ResearchFeedback.workspace_lid == workspace, ResearchFeedback.username == user.username,
+        ResearchFeedback.preference.is_not(None),
+    ).order_by(ResearchFeedback.updated_at.desc()).first()
+    if latest_preference:
+        state["preference"] = latest_preference.preference
+        event(state, "应用已选择的输出偏好")
+    db.add(ResearchTask(
+        task_id=task_id, lid=workspace, goal=goal, mode=req.mode,
+        parent_task_id=req.parent_task_id, status="QUEUED",
+    ))
+    db.add(GuidedResearch(task_id=task_id, revision=0, state_json=_json_dumps(state)))
+    db.commit()
+    _wake_worker(request)
+    return {"status_code": 200, "data": {"task_id": task_id, "status": "QUEUED"}}
+
+
+@router.post("/research/tasks/{task_id}/review")
+def review_research_task(
+    task_id: str, req: ResearchReview, request: Request,
+    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db),
+):
+    user = authenticate_access_token(token, db)
+    task = db.query(ResearchTask).filter_by(task_id=task_id, lid=user.workspace_lid).first()
+    row = db.get(GuidedResearch, task_id) if task else None
+    if not row:
+        raise HTTPException(status_code=404, detail="找不到可审阅的任务")
+    if row.revision != req.revision:
+        raise HTTPException(status_code=409, detail="任务状态已更新，请刷新后重试")
+    state = guided.load(row)
+    status = task.status
+    state.setdefault("goal", task.goal)
+    if req.action != "cancel" and not guided.sources_available(db, user.workspace_lid, state):
+        raise HTTPException(status_code=409, detail="原论文范围已变化，请重新创建任务")
+
+    previous_difficulty = state.get("difficulty", "standard")
+    previous_policy = state.get("review_policy", "all")
+    if req.action == "rewind":
+        if status not in {"RUNNING", "QUEUED", "AWAITING_INPUT", "WAITING_RETRY", "SUCCESS", "PARTIAL", "NO_RESULTS", "FAILED", "CANCELLED"}:
+            raise HTTPException(status_code=409, detail="当前状态无法回退")
+        difficulty = req.difficulty or previous_difficulty
+        if not req.step_id or not req.questions or not guided.rewind(state, req.step_id, req.questions):
+            raise HTTPException(status_code=422, detail="请选择已执行的节点，并保留至少一个研究问题")
+        state["difficulty"] = difficulty
+        status = guided.next_status(state)
+    elif req.action == "cancel":
+        if status not in {"QUEUED", "RUNNING", "AWAITING_APPROVAL", "AWAITING_INPUT", "WAITING_RETRY"}:
+            raise HTTPException(status_code=409, detail="该任务已结束")
+        status = "CANCELLED"
+        event(state, "用户停止任务", "已保存完成的节点")
+        for step in state["steps"]:
+            if step["status"] == "RUNNING":
+                step["status"] = "PENDING"
+    elif req.action == "resume":
+        retry_planning = status == "FAILED" and state["phase"] == "plan" and state["operations"] < guided.MAX_OPERATIONS
+        if status != "WAITING_RETRY" and not retry_planning:
+            raise HTTPException(status_code=409, detail="当前任务不能从此处重试")
+        status = "QUEUED"
+        event(state, "用户重试计划生成" if retry_planning else "用户恢复研究")
+    else:
+        if status not in {"AWAITING_APPROVAL", "AWAITING_INPUT"}:
+            raise HTTPException(status_code=409, detail="当前没有待审阅的计划或节点")
+        if status == "AWAITING_INPUT" and task.updated_at + timedelta(seconds=guided.NODE_REVIEW_SECONDS) <= _utc_now():
+            raise HTTPException(status_code=409, detail="节点审阅已超时，请回退到需要调整的节点")
+        current = next((step for step in state["steps"] if step["step_id"] == state["review_step_id"]), None)
+        if req.action == "repair":
+            query = (req.query or "").strip()
+            if not current or not query or len(current["attempts"]) >= guided.MAX_ATTEMPTS:
+                raise HTTPException(status_code=422, detail="请输入新查询，或当前节点的尝试额度已用完")
+            if normalized(query) in {normalized(item["query"]) for item in current["attempts"]}:
+                raise HTTPException(status_code=422, detail="该查询已经尝试过，请输入不同的查询")
+            current.update(retry_query=query, status="PENDING", quality="PENDING")
+            event(state, "用户要求重新检索" if state["source"] == "discovery" else "用户要求补证", query, current["step_id"])
+        else:
+            if req.difficulty is not None:
+                state["difficulty"] = req.difficulty
+            objective_changed = False
+            if status == "AWAITING_APPROVAL":
+                policy = req.review_policy or previous_policy
+                objective = req.objective.strip() if req.objective else state.get("objective")
+                objective_changed = objective != state.get("objective")
+                state.update(review_policy=policy, objective=objective)
+            if current:
+                guided.accept_node(state, current)
+            if req.action == "revise":
+                if req.questions is None or not (req.questions or current):
+                    raise HTTPException(status_code=422, detail="请至少保留一个研究节点")
+                if not guided.replace_future(state, req.questions, "用户调整研究计划", objective_changed=objective_changed):
+                    event(state, "用户按原计划继续", "节点内容未变，保留当前计划版本")
+            elif objective_changed:
+                guided.record_plan_change(state, "用户修正研究目标")
+            else:
+                event(state, "用户按原计划继续", "保留当前计划版本")
+        status = guided.next_status(state)
+
+    if previous_difficulty != state.get("difficulty", "standard"):
+        labels = {"quick": "快速", "standard": "标准", "deep": "深入"}
+        event(state, "用户调整执行难度", f"{labels[previous_difficulty]} → {labels[state['difficulty']]}")
+    if previous_policy != state.get("review_policy", "all"):
+        event(state, "用户调整审批方式", "仅在关键节点暂停" if state["review_policy"] == "checkpoints" else "逐步审阅")
+    if not guided.save(db, task, row, state, status):
+        raise HTTPException(status_code=409, detail="任务状态已更新，请刷新后重试")
+    _wake_worker(request)
+    return {"data": {"task_id": task_id, "status": status}}
 
 
 def _json_safe(value: Any) -> Any:
@@ -217,10 +426,12 @@ def create_task(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ):
-    user = _get_user(token, db)
+    user = authenticate_access_token(token, db)
     orchestrator = getattr(request.app, "research_orchestrator", None)
     if orchestrator is None:
         raise HTTPException(status_code=503, detail="Research 编排组件未初始化")
+    if req.source is not None:
+        return _create_guided_task(req, request, db, user)
 
     owned_ids = {
         row.uid for row in db.query(Document.uid).filter(Document.lid == user.workspace_lid).all()
@@ -279,7 +490,7 @@ def list_tasks(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ):
-    user = _get_user(token, db)
+    user = authenticate_access_token(token, db)
     tasks = (
         db.query(ResearchTask)
         .filter(ResearchTask.lid == user.workspace_lid)
@@ -298,10 +509,31 @@ def list_tasks(
                 "parent_task_id": t.parent_task_id,
                 "created_at": _utc_iso(t.created_at),
                 "updated_at": _utc_iso(t.updated_at),
+                "review_deadline": _utc_iso(t.updated_at + timedelta(seconds=guided.NODE_REVIEW_SECONDS))
+                if t.status == "AWAITING_INPUT" and t.updated_at else None,
             }
             for t in tasks
         ],
     }
+
+
+def saved_deliverables(db: Session, task_id: str, *, include_report: bool = True) -> list[dict]:
+    records = db.query(Artifact).filter_by(task_id=task_id)
+    if not include_report:
+        records = records.filter(Artifact.type != "research_report")
+    artifacts = [
+        {"artifact_id": item.artifact_id, "type": item.type, "title": item.title,
+         "data": json.loads(item.data_json) if item.data_json else {}}
+        for item in records.order_by(Artifact.id)
+    ]
+    reports = [item for item in artifacts if item["type"] == "research_report"]
+    if not reports:
+        return artifacts
+    primary = next(
+        (item for item in reports if (item["data"] or {}).get("origin") == "reviewed_defense_version"),
+        reports[0],
+    )
+    return [primary, *(item for item in artifacts if item["type"] != "research_report")]
 
 
 @router.get("/research/tasks/{task_id}")
@@ -310,14 +542,41 @@ def get_task(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ):
-    user = _get_user(token, db)
+    user = authenticate_access_token(token, db)
     task = db.query(ResearchTask).filter(
         ResearchTask.task_id == task_id, ResearchTask.lid == user.workspace_lid
     ).first()
     if task is None:
         return {"status_code": 404, "msg": "任务不存在"}
+    row = db.get(GuidedResearch, task_id)
+    if row:
+        state = guided.load(row)
+        data = {
+            "task_id": task_id, "goal": task.goal, "status": task.status,
+            "parent_task_id": task.parent_task_id,
+            "created_at": _utc_iso(task.created_at), "updated_at": _utc_iso(task.updated_at),
+            "review_deadline": _utc_iso(task.updated_at + timedelta(seconds=guided.NODE_REVIEW_SECONDS))
+            if task.status == "AWAITING_INPUT" and task.updated_at else None,
+        }
+        if not guided.sources_available(db, user.workspace_lid, state):
+            data.update(guided=True, revision=row.revision, source_unavailable=True, steps=[], artifacts=[])
+        else:
+            state.setdefault("goal", task.goal)
+            saved = saved_deliverables(db, task_id, include_report=not state.get("saved_report_superseded"))
+            data.update(guided.task_detail(
+                state, task_id, row.revision, task.status,
+                has_saved_report=bool(saved and saved[0]["type"] == "research_report"),
+            ))
+            data["artifacts"] = saved + data["artifacts"]
+            if (data["artifacts"] and task.status in {"SUCCESS", "PARTIAL", "FAILED", "CANCELLED"}
+                    or task.status == "FAILED" and state["plan_version"]):
+                feedback = db.get(ResearchFeedback, (task_id, state["plan_version"], user.username))
+                archived_runs = state.get("archived_runs", [])
+                rewound_at = archived_runs[-1].get("rewound_at") if archived_runs else None
+                if feedback and (not rewound_at or feedback.updated_at >= datetime.fromisoformat(rewound_at)):
+                    data["feedback"] = feedback_summary(feedback)
+        return {"status_code": 200, "data": data}
     steps = db.query(ResearchStep).filter(ResearchStep.task_id == task_id).all()
-    artifacts = db.query(Artifact).filter(Artifact.task_id == task_id).all()
     return {
         "status_code": 200,
         "msg": "ok",
@@ -339,14 +598,6 @@ def get_task(
                 }
                 for s in steps
             ],
-            "artifacts": [
-                {
-                    "artifact_id": a.artifact_id,
-                    "type": a.type,
-                    "title": a.title,
-                    "data": json.loads(a.data_json) if a.data_json else {},
-                }
-                for a in artifacts
-            ],
+            "artifacts": saved_deliverables(db, task_id),
         },
     }

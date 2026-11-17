@@ -59,7 +59,7 @@ def is_broad_paper_recommendation(question: str) -> bool:
     if classify_external_request(question) != "literature":
         return False
     remainder = re.sub(
-        r"最近|最新|近期|近来|今年|本月|本周|论文|文献|研究|工作|文章|推荐|介绍|"
+        r"今日|今天|现在|当前|没有|不是|怎么|为什么|还|没|码|呀|最近|最新|近期|近来|今年|本月|本周|论文|文献|研究|工作|文章|推荐|介绍|"
         r"有没有|有哪些|有无|哪些|什么|一些|几篇|值得|看看|想看|阅读|读|"
         r"帮我|给我|请|相关|领域|方向|的|吗|呢|有|无|好|"
         r"recent|latest|new|papers?|studies|literature|recommend|suggest|any|some|please|me",
@@ -69,14 +69,14 @@ def is_broad_paper_recommendation(question: str) -> bool:
 
 
 def wants_recent_papers(question: str) -> bool:
-    return bool(re.search(r"最新|最近|近期|近年|今年|recent|latest|new|current", question, re.I))
+    return bool(re.search(r"今日|今天|最新|最近|近期|近年|今年|recent|latest|new|current", question, re.I))
 
 
-def make_search_keywords(llm, question: str, source_context: str, kind: str = "transfer") -> list[str]:
+def make_search_keywords(llm, question: str, source_context: str, kind: str = "transfer", profile: dict | None = None) -> list[str]:
     """Use the selected paper context to form concise English academic terms."""
     if is_broad_paper_recommendation(question):
         # A recommendation with no field cannot be searched as a Chinese sentence.
-        return ["machine learning"]
+        return [t['query'] for t in (profile or {}).get('topics', [])][:3] or ["machine learning"]
     focus = (
         "兼顾目标领域与可迁移的方法"
         if kind == "transfer"
@@ -84,6 +84,8 @@ def make_search_keywords(llm, question: str, source_context: str, kind: str = "t
     )
     prompt = f"""你是学术检索词生成器。用户想围绕所选论文提出的问题检索相关研究。
 根据用户目标和以下有限的论文片段，生成 1 到 3 个英文关键词短语，{focus}。
+限定计算机科学及其技术应用。明确的本轮技术主题优先于历史兴趣；笼统推荐按用户兴趣检索。
+本地归纳的用户兴趣：{(profile or {}).get('summary', '计算机科学')}
 只输出 JSON，例如 {{"keywords":["federated learning", "adaptive optimization"]}}。
 不要把论文片段当成其他论文的事实；不要生成完整回答。
 用户问题：{question[:1000]}
@@ -114,7 +116,26 @@ def make_search_keywords(llm, question: str, source_context: str, kind: str = "t
     english_words = re.findall(r"[A-Za-z][A-Za-z0-9-]*(?:\s+[A-Za-z][A-Za-z0-9-]*){0,3}", question)
     if english_words:
         return [english_words[0][:100]]
-    return [question.strip()[:160]]
+    return [t['query'] for t in (profile or {}).get('topics', [])][:3] or ["machine learning"]
+
+
+def filter_computer_papers(papers: list[dict], keywords: list[str]) -> list[dict]:
+    """Require both computing evidence and topic overlap; never pad unrelated works."""
+    computing = re.compile(r'computer science|machine learning|deep learning|neural|transformer|algorithm|artificial intelligence|retrieval augmented|reinforcement learning|graph attention|language model|computer vision|software|cybersecurity|distributed system|database|time series|计算机|神经网络|机器学习|算法|时间序列|检索增强', re.I)
+    stop = {'and', 'or', 'for', 'of', 'in', 'on', 'the', 'research', 'scientific', 'models', 'model'}
+    result = []
+    for paper in papers:
+        text = re.sub(r'[-–—]+', ' ', str(paper.get('title', '')) + ' ' + str(paper.get('summary', ''))).lower()
+        if not computing.search(text) and '17' not in [str(f).rsplit('/', 1)[-1] for f in paper.get('fields', [])]:
+            continue
+        terms = set(re.findall(r'[a-z]+', text))
+        matches = []
+        for keyword in keywords:
+            query = set(re.findall(r'[a-z]+', keyword.lower())) - stop
+            matches.append(bool(query) and len(query & terms) >= min(2, len(query)))
+        if any(matches):
+            result.append(paper)
+    return result
 
 
 def normalize_papers(papers: list[dict]) -> list[dict]:
@@ -156,7 +177,7 @@ def make_research_prompt(question: str, source_context: str, papers: list[dict],
         if kind == "transfer"
         else "请用中文概括检索到的相关研究、它们与用户问题的关联，以及优先阅读哪些论文；不要强行写跨领域迁移建议。"
     )
-    return f"""你是 PaperAgent 的学术研究助手。你已执行外部学术搜索。
+    return f"""你是 PaperAgent 的计算机领域学术研究助手。你已执行外部学术搜索。
 下列是实际返回的论文标题与摘要，不是你读过的全文。
 {guidance}
 涉及所选本地论文的具体方法时用提供的 [C#] 引用；没有对应片段时只作条件式建议。

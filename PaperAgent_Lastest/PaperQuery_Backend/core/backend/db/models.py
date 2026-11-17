@@ -153,6 +153,15 @@ class ResearchTask(Base):
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
 
 
+class GuidedResearch(Base):
+    __tablename__ = "guided_research"
+
+    task_id = Column(String(64), primary_key=True)
+    revision = Column(Integer, nullable=False, default=0)
+    state_json = Column(Text, nullable=False)
+    lease_until = Column(DateTime, nullable=True, index=True)
+
+
 class ResearchStep(Base):
     __tablename__ = 'research_steps'
 
@@ -166,6 +175,19 @@ class ResearchStep(Base):
     error = Column(Text)
     duration_ms = Column(Integer)
 
+
+class ResearchFeedback(Base):
+    __tablename__ = "research_feedback"
+
+    task_id = Column(String(64), primary_key=True)
+    plan_version = Column(Integer, primary_key=True)
+    username = Column(String(255), primary_key=True)
+    workspace_lid = Column(String(255), nullable=False, index=True)
+    rating = Column(String(16), nullable=False)
+    reason = Column(String(32), nullable=True)
+    note = Column(Text, nullable=False, default="")
+    preference = Column(String(32), nullable=True)
+    updated_at = Column(DateTime, nullable=False)
 
 class SkillRun(Base):
     __tablename__ = 'skill_runs'
